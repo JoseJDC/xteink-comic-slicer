@@ -64,8 +64,7 @@ export function useImages(): UseImagesReturn {
       }))
     );
 
-    setImages(list);
-    setCurrentIndex(0);
+    setImages((prev) => [...prev, ...list]);
     setLoading(false);
   }, [addUrls]);
 
@@ -83,8 +82,7 @@ export function useImages(): UseImagesReturn {
       }))
     );
 
-    setImages(list);
-    setCurrentIndex(0);
+    setImages((prev) => [...prev, ...list]);
     setLoading(false);
   }, [addUrls]);
 
