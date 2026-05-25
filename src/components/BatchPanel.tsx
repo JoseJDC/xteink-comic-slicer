@@ -32,7 +32,6 @@ export function BatchPanel({ images, options }: BatchPanelProps) {
                 const ctx = canvas.getContext('2d')!;
                 ctx.drawImage(el, 0, 0);
                 resolve({ canvas, name: img.name, orientation: img.orientation });
-                URL.revokeObjectURL(img.url);
               };
               el.onerror = () => {
                 reject(new Error(`Failed to load: ${img.name}`));
