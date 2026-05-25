@@ -7,6 +7,7 @@ export interface ImageFile {
   url: string;
   processed: boolean;
   orientation: OrientationMode;
+  source?: string;
 }
 
 export interface CropSlice {

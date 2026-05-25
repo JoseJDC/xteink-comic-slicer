@@ -10,7 +10,7 @@ interface ConfigPanelProps {
   onIs2bitChange: (v: boolean) => void;
   onContrastChange: (v: number) => void;
   onFilesSelected: (files: FileList) => void;
-  onCbzSelected: (file: File) => void;
+  onCbzSelected: (files: File[]) => void;
   disabled: boolean;
 }
 
@@ -33,7 +33,7 @@ export function ConfigPanel({
     if (!files || files.length === 0) return;
     const cbzFiles = Array.from(files).filter((f) => f.name.toLowerCase().endsWith('.cbz'));
     if (cbzFiles.length > 0) {
-      onCbzSelected(cbzFiles[0]);
+      onCbzSelected(cbzFiles);
     } else {
       onFilesSelected(files);
     }

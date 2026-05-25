@@ -12,7 +12,7 @@ interface UseImagesReturn {
   loading: boolean;
   error: string | null;
   loadFromFiles: (files: FileList | File[]) => void;
-  loadCbzFiles: (files: { name: string; blob: Blob }[]) => void;
+  loadCbzFiles: (files: { name: string; blob: Blob }[], source?: string) => void;
   selectImage: (index: number) => void;
   goToNext: () => void;
   goToPrev: () => void;
@@ -69,7 +69,7 @@ export function useImages(): UseImagesReturn {
     setLoading(false);
   }, [addUrls]);
 
-  const loadCbzFiles = useCallback((entries: { name: string; blob: Blob }[]) => {
+  const loadCbzFiles = useCallback((entries: { name: string; blob: Blob }[], source?: string) => {
     setLoading(true);
     setError(null);
 
@@ -79,6 +79,7 @@ export function useImages(): UseImagesReturn {
         url: URL.createObjectURL(e.blob),
         processed: false,
         orientation: 'portrait' as OrientationMode,
+        source,
       }))
     );
 

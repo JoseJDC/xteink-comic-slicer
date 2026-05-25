@@ -21,12 +21,15 @@ export default function App() {
     images.loadFromFiles(files);
   }, [images]);
 
-  const handleCbzSelected = useCallback(async (file: File) => {
-    try {
-      const entries = await loadCbzAsImages(file);
-      images.loadCbzFiles(entries.map((e) => ({ name: e.name, blob: e.data })));
-    } catch (err) {
-      console.error('CBZ load error:', err);
+  const handleCbzSelected = useCallback(async (files: File[]) => {
+    for (const file of files) {
+      try {
+        const entries = await loadCbzAsImages(file);
+        const sourceName = file.name.replace(/\.cbz$/i, '');
+        images.loadCbzFiles(entries.map((e) => ({ name: e.name, blob: e.data })), sourceName);
+      } catch (err) {
+        console.error('CBZ load error:', file.name, err);
+      }
     }
   }, [images]);
 

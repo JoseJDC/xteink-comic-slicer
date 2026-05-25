@@ -7,57 +7,107 @@ interface BatchPanelProps {
   options: ConversionOptions;
 }
 
+interface SourceGroup {
+  title: string;
+  images: ImageFile[];
+}
+
+function groupBySource(images: ImageFile[]): SourceGroup[] {
+  const groups = new Map<string, ImageFile[]>();
+
+  for (const img of images) {
+    const key = img.source || '__individual__';
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(img);
+  }
+
+  const result: SourceGroup[] = [];
+  for (const [source, imgs] of groups) {
+    if (source === '__individual__') {
+      const title = imgs.length === 1
+        ? imgs[0].name.replace(/\.[^.]+$/, '')
+        : 'comic';
+      result.push({ title, images: imgs });
+    } else {
+      result.push({ title: source, images: imgs });
+    }
+  }
+  return result;
+}
+
+function triggerDownload(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export function BatchPanel({ images, options }: BatchPanelProps) {
   const [progress, setProgress] = useState<ConversionProgress | null>(null);
   const [converting, setConverting] = useState(false);
+  const [showMergeDialog, setShowMergeDialog] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
-  const handleConvert = async () => {
-    if (images.length === 0) return;
+  const doConvert = async (groups: SourceGroup[]) => {
     setConverting(true);
-    setProgress({ current: 0, total: 0, message: 'Loading images...' });
     abortRef.current = new AbortController();
 
+    setProgress({ current: 0, total: groups.length, message: `Converting ${groups.length} file(s)...` });
+
     try {
-      const loaded = await Promise.all(
-        images.map((img) => {
-          return new Promise<{ canvas: HTMLCanvasElement; name: string; orientation: OrientationMode }>(
-            (resolve, reject) => {
-              const el = new Image();
-              el.crossOrigin = 'anonymous';
-              el.onload = () => {
-                const canvas = document.createElement('canvas');
-                canvas.width = el.naturalWidth;
-                canvas.height = el.naturalHeight;
-                const ctx = canvas.getContext('2d')!;
-                ctx.drawImage(el, 0, 0);
-                resolve({ canvas, name: img.name, orientation: img.orientation });
-              };
-              el.onerror = () => {
-                reject(new Error(`Failed to load: ${img.name}`));
-              };
-              if (img.url.startsWith('blob:') || img.url.startsWith('http')) {
-                el.src = img.url;
-              } else {
-                fetch(img.url)
-                  .then((r) => r.blob())
-                  .then((b) => { el.src = URL.createObjectURL(b); });
+      for (let g = 0; g < groups.length; g++) {
+        if (abortRef.current?.signal.aborted) break;
+        const group = groups[g];
+
+        setProgress({
+          current: g,
+          total: groups.length,
+          message: `Loading images for "${group.title}"...`,
+        });
+
+        const loaded = await Promise.all(
+          group.images.map((img) => {
+            return new Promise<{ canvas: HTMLCanvasElement; name: string; orientation: OrientationMode }>(
+              (resolve, reject) => {
+                const el = new Image();
+                el.crossOrigin = 'anonymous';
+                el.onload = () => {
+                  const canvas = document.createElement('canvas');
+                  canvas.width = el.naturalWidth;
+                  canvas.height = el.naturalHeight;
+                  const ctx = canvas.getContext('2d')!;
+                  ctx.drawImage(el, 0, 0);
+                  resolve({ canvas, name: img.name, orientation: img.orientation });
+                };
+                el.onerror = () => {
+                  reject(new Error(`Failed to load: ${img.name}`));
+                };
+                if (img.url.startsWith('blob:') || img.url.startsWith('http')) {
+                  el.src = img.url;
+                } else {
+                  fetch(img.url)
+                    .then((r) => r.blob())
+                    .then((b) => { el.src = URL.createObjectURL(b); });
+                }
               }
-            }
-          );
-        })
-      );
+            );
+          })
+        );
 
-      const result = await convertImages(loaded, options, setProgress, abortRef.current.signal);
+        if (abortRef.current?.signal.aborted) break;
 
-      const url = URL.createObjectURL(result.blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = result.filename;
-      a.click();
-      URL.revokeObjectURL(url);
+        const result = await convertImages(
+          loaded, options, setProgress, abortRef.current.signal, group.title
+        );
 
-      setProgress({ current: 0, total: 0, message: `Done! ${result.pageCount} pages` });
+        triggerDownload(result.blob, result.filename);
+      }
+
+      if (!abortRef.current?.signal.aborted) {
+        setProgress({ current: groups.length, total: groups.length, message: 'Done!' });
+      }
     } catch (err: any) {
       if (err.name === 'AbortError') {
         setProgress({ current: 0, total: 0, message: 'Cancelled' });
@@ -70,9 +120,34 @@ export function BatchPanel({ images, options }: BatchPanelProps) {
     }
   };
 
-  const handleCancel = () => {
+  const handleConvertClick = () => {
+    if (images.length === 0) return;
+    const groups = groupBySource(images);
+    if (groups.length > 1) {
+      setShowMergeDialog(true);
+    } else {
+      doConvert(groups);
+    }
+  };
+
+  const handleMergeAll = () => {
+    setShowMergeDialog(false);
+    const groups = groupBySource(images);
+    const allImages = groups.flatMap((g) => g.images);
+    doConvert([{ title: 'comic', images: allImages }]);
+  };
+
+  const handleSeparate = () => {
+    setShowMergeDialog(false);
+    const groups = groupBySource(images);
+    doConvert(groups);
+  };
+
+  const handleCancelConvert = () => {
     abortRef.current?.abort();
   };
+
+  const srcCount = groupBySource(images).length;
 
   return (
     <div className="batch-panel">
@@ -80,7 +155,7 @@ export function BatchPanel({ images, options }: BatchPanelProps) {
         <div className="batch-progress">
           <div className="progress-text">
             {progress.total > 0 ? (
-              <>{progress.current}/{progress.total} slices: {progress.message}</>
+              <>{progress.current}/{progress.total}: {progress.message}</>
             ) : (
               <>{progress.message}</>
             )}
@@ -98,19 +173,40 @@ export function BatchPanel({ images, options }: BatchPanelProps) {
 
       <div className="batch-actions">
         {converting ? (
-          <button className="btn btn-danger btn-lg" onClick={handleCancel}>
+          <button className="btn btn-danger btn-lg" onClick={handleCancelConvert}>
             Cancel
           </button>
         ) : (
           <button
             className="btn btn-primary btn-lg"
-            onClick={handleConvert}
+            onClick={handleConvertClick}
             disabled={images.length === 0}
           >
-            Convert to XTC ({images.length})
+            Convert to XTC ({srcCount > 1 ? `${srcCount} files` : `${images.length} images`})
           </button>
         )}
       </div>
+
+      {showMergeDialog && (
+        <div className="modal-overlay">
+          <div className="modal-dialog">
+            <p className="modal-text">
+              Export as a single XTC file or as separate files (one per source)?
+            </p>
+            <div className="modal-actions">
+              <button className="btn btn-primary" onClick={handleMergeAll}>
+                Single file
+              </button>
+              <button className="btn" onClick={handleSeparate}>
+                Separate files
+              </button>
+              <button className="btn" onClick={() => setShowMergeDialog(false)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

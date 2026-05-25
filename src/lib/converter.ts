@@ -97,7 +97,8 @@ export async function convertImages(
   images: Array<{ canvas: HTMLCanvasElement; name: string; orientation: OrientationMode }>,
   options: ConversionOptions,
   onProgress: (p: ConversionProgress) => void,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  title?: string
 ): Promise<ConversionResult> {
   const pages: PageEntry[] = [];
   const { width: targetW, height: targetH } = getTargetDimensions(options.device);
@@ -168,12 +169,12 @@ export async function convertImages(
   const xtcBuffer = buildXtc(pages, options.is2bit);
   const blob = new Blob([xtcBuffer]);
 
-  const title = images.length === 1
+  const baseTitle = title || (images.length === 1
     ? images[0].name.replace(/\.[^.]+$/, '')
-    : 'comic';
+    : 'comic');
 
   const ext = options.is2bit ? 'xtch' : 'xtc';
-  const filename = `${title.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64)}.${ext}`;
+  const filename = `${baseTitle.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64)}.${ext}`;
 
   onProgress({
     current: totalPages,
