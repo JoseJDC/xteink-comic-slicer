@@ -11,20 +11,6 @@ interface PageEntry {
   height: number;
 }
 
-function toGrayscale(imageData: ImageData): ImageData {
-  const { data, width, height } = imageData;
-  const out = new Uint8ClampedArray(data.length);
-  for (let i = 0; i < width * height; i++) {
-    const off = i * 4;
-    const gray = Math.round(
-      data[off] * 0.299 + data[off + 1] * 0.587 + data[off + 2] * 0.114
-    );
-    out[off] = out[off + 1] = out[off + 2] = gray;
-    out[off + 3] = 255;
-  }
-  return new ImageData(out, width, height);
-}
-
 function applyContrast(imageData: ImageData, level: number): ImageData {
   if (level === 0) return imageData;
   const { data, width, height } = imageData;
@@ -73,7 +59,6 @@ async function processSlice(
   const ctx = sliceCanvas.getContext('2d')!;
   let imageData = ctx.getImageData(0, 0, targetW, targetH);
 
-  imageData = toGrayscale(imageData);
   imageData = applyContrast(imageData, options.contrast);
   imageData = applyDither(imageData, options.dithering, options.is2bit);
 

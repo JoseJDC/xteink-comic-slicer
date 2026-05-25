@@ -143,6 +143,16 @@ export function extractAndRotateSlice(
   const extCtx = extracted.getContext('2d')!;
   extCtx.drawImage(sourceCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
 
+  // 1.5 Convertir a escala de grises a resolución completa (antes de rotar/redimensionar,
+  //      así la interpolación bilinear opera sobre datos de un solo canal)
+  const srcData = extCtx.getImageData(0, 0, sw, sh);
+  const srcPixels = srcData.data;
+  for (let i = 0; i < srcPixels.length; i += 4) {
+    const gray = Math.round(srcPixels[i] * 0.299 + srcPixels[i + 1] * 0.587 + srcPixels[i + 2] * 0.114);
+    srcPixels[i] = srcPixels[i + 1] = srcPixels[i + 2] = gray;
+  }
+  extCtx.putImageData(srcData, 0, 0);
+
   // 2. Rotar 90° clockwise (strip horizontal → vertical para XTC)
   const rotated = document.createElement('canvas');
   rotated.width = sh;
