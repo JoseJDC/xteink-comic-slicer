@@ -1,5 +1,5 @@
 import type { ConversionOptions, ConversionProgress, CropSlice, OrientationMode } from '../types';
-import { computeSlices, extractSlice } from './slicer';
+import { computeSlices, extractAndRotateSlice } from './slicer';
 import { imageDataToXtg, imageDataToXth } from './processing/xtg';
 import { applyDither } from './processing/dithering';
 import { getTargetDimensions } from './processing/canvas';
@@ -69,7 +69,7 @@ async function processSlice(
   targetW: number,
   targetH: number
 ): Promise<ArrayBuffer> {
-  const sliceCanvas = extractSlice(sourceCanvas, slice, targetW, targetH);
+  const sliceCanvas = extractAndRotateSlice(sourceCanvas, slice, targetW, targetH);
   const ctx = sliceCanvas.getContext('2d')!;
   let imageData = ctx.getImageData(0, 0, targetW, targetH);
 

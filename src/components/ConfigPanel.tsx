@@ -62,10 +62,10 @@ export function ConfigPanel({
         <label>Device:</label>
         <div className="config-btn-group">
           <button className={device === 'X4' ? 'active' : ''} onClick={() => onDeviceChange('X4')} disabled={disabled}>
-            X4 (800×480)
+            X4 (480×800)
           </button>
           <button className={device === 'X3' ? 'active' : ''} onClick={() => onDeviceChange('X3')} disabled={disabled}>
-            X3 (792×528)
+            X3 (528×792)
           </button>
         </div>
       </div>

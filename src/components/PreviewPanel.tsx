@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import type { CropSlice, OrientationMode, ConversionOptions } from '../types';
-import { computeSlices, extractSlice } from '../lib/slicer';
+import { computeSlices, extractAndRotateSlice } from '../lib/slicer';
 import { applyDither } from '../lib/processing/dithering';
 import { getTargetDimensions } from '../lib/processing/canvas';
 
@@ -64,7 +64,7 @@ export function PreviewPanel({
 
     const previews: string[] = [];
     for (const slice of slices) {
-      const out = extractSlice(sourceCanvas, slice, tw, th);
+      const out = extractAndRotateSlice(sourceCanvas, slice, tw, th);
       const outCtx = out.getContext('2d')!;
       let imageData = outCtx.getImageData(0, 0, tw, th);
       imageData = applyDither(imageData, options.dithering, options.is2bit);

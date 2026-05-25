@@ -104,41 +104,68 @@ export function computeSlices(
 }
 
 /**
- * Extrae un slice del canvas fuente y lo renderiza en un canvas de salida.
+ * Extrae un slice, lo rota 90° y lo renderiza en el canvas de salida.
+ * La rotación 90° es necesaria para que el contenido del strip (5:3 horizontal)
+ * se almacene como página vertical (3:5) en el formato XTC, que el dispositivo
+ * Xteink espera en orientación portrait (480×800).
+ *
  * @param sourceCanvas Canvas con la imagen fuente
  * @param slice        Descripción del slice a extraer
- * @param targetWidth  Ancho de salida (800 para landscape)
- * @param targetHeight Alto de salida (480 para landscape)
- * @returns            Canvas con el slice renderizado
+ * @param targetWidth  Ancho de salida (480 para X4)
+ * @param targetHeight Alto de salida (800 para X4)
+ * @returns            Canvas con el slice extraído, rotado y redimensionado
  */
-export function extractSlice(
+export function extractAndRotateSlice(
   sourceCanvas: HTMLCanvasElement,
   slice: CropSlice,
   targetWidth: number,
   targetHeight: number
 ): HTMLCanvasElement {
-  const out = document.createElement('canvas');
-  out.width = targetWidth;
-  out.height = targetHeight;
-  const ctx = out.getContext('2d')!;
-
-  ctx.fillStyle = '#FFFFFF';
-  ctx.fillRect(0, 0, targetWidth, targetHeight);
-
   const sx = slice.x;
   const sy = slice.y;
   const sw = slice.width;
   const sh = slice.height;
 
-  if (sw <= 0 || sh <= 0) return out;
+  if (sw <= 0 || sh <= 0) {
+    const blank = document.createElement('canvas');
+    blank.width = targetWidth;
+    blank.height = targetHeight;
+    const ctx = blank.getContext('2d')!;
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, targetWidth, targetHeight);
+    return blank;
+  }
 
-  const scale = Math.min(targetWidth / sw, targetHeight / sh);
-  const dw = Math.round(sw * scale);
-  const dh = Math.round(sh * scale);
+  // 1. Extraer el strip
+  const extracted = document.createElement('canvas');
+  extracted.width = sw;
+  extracted.height = sh;
+  const extCtx = extracted.getContext('2d')!;
+  extCtx.drawImage(sourceCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
+
+  // 2. Rotar 90° clockwise (strip horizontal → vertical para XTC)
+  const rotated = document.createElement('canvas');
+  rotated.width = sh;
+  rotated.height = sw;
+  const rotCtx = rotated.getContext('2d')!;
+  rotCtx.translate(rotated.width / 2, rotated.height / 2);
+  rotCtx.rotate(90 * Math.PI / 180);
+  rotCtx.drawImage(extracted, -extracted.width / 2, -extracted.height / 2);
+
+  // 3. Redimensionar con letterbox al tamaño target
+  const out = document.createElement('canvas');
+  out.width = targetWidth;
+  out.height = targetHeight;
+  const outCtx = out.getContext('2d')!;
+  outCtx.fillStyle = '#FFFFFF';
+  outCtx.fillRect(0, 0, targetWidth, targetHeight);
+
+  const scale = Math.min(targetWidth / rotated.width, targetHeight / rotated.height);
+  const dw = Math.round(rotated.width * scale);
+  const dh = Math.round(rotated.height * scale);
   const dx = Math.round((targetWidth - dw) / 2);
   const dy = Math.round((targetHeight - dh) / 2);
-
-  ctx.drawImage(sourceCanvas, sx, sy, sw, sh, dx, dy, dw, dh);
+  outCtx.drawImage(rotated, 0, 0, rotated.width, rotated.height, dx, dy, dw, dh);
 
   return out;
 }

@@ -1,8 +1,8 @@
 import type { Device } from '../../types';
 
 const DEVICE_DIMENSIONS: Record<Device, { width: number; height: number }> = {
-  X4: { width: 800, height: 480 },
-  X3: { width: 792, height: 528 },
+  X4: { width: 480, height: 800 },
+  X3: { width: 528, height: 792 },
 };
 
 export function getTargetDimensions(device: Device): { width: number; height: number } {
