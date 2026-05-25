@@ -11,8 +11,8 @@ import './App.css';
 export default function App() {
   const images = useImages();
   const [device, setDevice] = useState<ConversionOptions['device']>('X4');
-  const [dithering, setDithering] = useState<DitherAlgorithm>('floyd-steinberg');
-  const [is2bit, setIs2bit] = useState(false);
+  const [dithering, setDithering] = useState<DitherAlgorithm>('none');
+  const [is2bit, setIs2bit] = useState(true);
   const [contrast, setContrast] = useState(0);
 
   const options: ConversionOptions = { device, dithering, is2bit, contrast };

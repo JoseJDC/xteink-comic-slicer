@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import type { CropSlice, OrientationMode, ConversionOptions } from '../types';
-import { computeSlices, extractAndRotateSlice } from '../lib/slicer';
+import { computeSlices, extractAndRotateSlice, extractFullPage } from '../lib/slicer';
 import { applyDither } from '../lib/processing/dithering';
 import { getTargetDimensions } from '../lib/processing/canvas';
 
@@ -23,7 +23,7 @@ export function PreviewPanel({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [naturalSize, setNaturalSize] = useState({ width: 0, height: 0 });
   const [slices, setSlices] = useState<CropSlice[]>([]);
-  const [selectedSlice, setSelectedSlice] = useState(0);
+  const [selectedSlice, setSelectedSlice] = useState(-1); // -1 = full page, 0+ = slice
   const [slicePreviews, setSlicePreviews] = useState<string[]>([]);
 
   const hasNaturalSize = naturalSize.width > 0 && naturalSize.height > 0;
@@ -46,7 +46,7 @@ export function PreviewPanel({
     if (!hasNaturalSize) return;
     const result = computeSlices(naturalSize.width, naturalSize.height, orientation);
     setSlices(result.slices);
-    setSelectedSlice(0);
+    setSelectedSlice(-1);
     generateSlicePreviews(result.slices);
   }, [naturalSize, orientation, hasNaturalSize]);
 
@@ -63,6 +63,16 @@ export function PreviewPanel({
     const { width: tw, height: th } = getTargetDimensions(options.device);
 
     const previews: string[] = [];
+
+    // Full page preview primero
+    const fullOut = extractFullPage(sourceCanvas, tw, th);
+    let fullCtx = fullOut.getContext('2d')!;
+    let fullData = fullCtx.getImageData(0, 0, tw, th);
+    fullData = applyDither(fullData, options.dithering, options.is2bit);
+    fullCtx.putImageData(fullData, 0, 0);
+    previews.push(fullOut.toDataURL('image/png'));
+
+    // Slice previews
     for (const slice of slices) {
       const out = extractAndRotateSlice(sourceCanvas, slice, tw, th);
       const outCtx = out.getContext('2d')!;
@@ -96,6 +106,9 @@ export function PreviewPanel({
     canvas.height = dispH;
     const ctx = canvas.getContext('2d')!;
     ctx.drawImage(imgRef.current!, 0, 0, dispW, dispH);
+
+    // Cuando está seleccionada la página completa, no dibujar overlays
+    if (selectedSlice < 0) return;
 
     ctx.strokeStyle = '#e94560';
     ctx.lineWidth = 2;
@@ -172,16 +185,19 @@ export function PreviewPanel({
 
       {slicePreviews.length > 0 && (
         <div className="slice-strip">
-          {slicePreviews.map((url, i) => (
-            <div
-              key={i}
-              className={`slice-thumb ${i === selectedSlice ? 'selected' : ''}`}
-              onClick={() => setSelectedSlice(i)}
-            >
-              <img src={url} alt={`Slice ${i + 1}`} />
-              <span className="slice-label">{i + 1}</span>
-            </div>
-          ))}
+          {slicePreviews.map((url, i) => {
+            const sliceIndex = i - 1; // -1 = full page, 0+ = slice
+            return (
+              <div
+                key={i}
+                className={`slice-thumb ${sliceIndex === selectedSlice ? 'selected' : ''}`}
+                onClick={() => setSelectedSlice(sliceIndex)}
+              >
+                <img src={url} alt={i === 0 ? 'Full page' : `Slice ${i}`} />
+                <span className="slice-label">{i === 0 ? 'Full' : `${i}`}</span>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

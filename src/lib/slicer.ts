@@ -115,6 +115,63 @@ export function computeSlices(
  * @param targetHeight Alto de salida (800 para X4)
  * @returns            Canvas con el slice extraído, rotado y redimensionado
  */
+/**
+ * Extrae la página completa, la pasa a grises a resolución completa
+ * y la redimensiona con letterbox al tamaño target (sin rotar).
+ * La página se mantiene en su orientación original (vertical para cómics).
+ */
+export function extractFullPage(
+  sourceCanvas: HTMLCanvasElement,
+  targetWidth: number,
+  targetHeight: number
+): HTMLCanvasElement {
+  const sw = sourceCanvas.width;
+  const sh = sourceCanvas.height;
+
+  if (sw <= 0 || sh <= 0) {
+    const blank = document.createElement('canvas');
+    blank.width = targetWidth;
+    blank.height = targetHeight;
+    const ctx = blank.getContext('2d')!;
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, targetWidth, targetHeight);
+    return blank;
+  }
+
+  // 1. Extraer imagen completa
+  const extracted = document.createElement('canvas');
+  extracted.width = sw;
+  extracted.height = sh;
+  const extCtx = extracted.getContext('2d')!;
+  extCtx.drawImage(sourceCanvas, 0, 0);
+
+  // 2. Escala de grises a resolución completa
+  const srcData = extCtx.getImageData(0, 0, sw, sh);
+  const srcPixels = srcData.data;
+  for (let i = 0; i < srcPixels.length; i += 4) {
+    const gray = Math.round(srcPixels[i] * 0.299 + srcPixels[i + 1] * 0.587 + srcPixels[i + 2] * 0.114);
+    srcPixels[i] = srcPixels[i + 1] = srcPixels[i + 2] = gray;
+  }
+  extCtx.putImageData(srcData, 0, 0);
+
+  // 3. Redimensionar con letterbox (sin rotar)
+  const out = document.createElement('canvas');
+  out.width = targetWidth;
+  out.height = targetHeight;
+  const outCtx = out.getContext('2d')!;
+  outCtx.fillStyle = '#FFFFFF';
+  outCtx.fillRect(0, 0, targetWidth, targetHeight);
+
+  const scale = Math.min(targetWidth / sw, targetHeight / sh);
+  const dw = Math.round(sw * scale);
+  const dh = Math.round(sh * scale);
+  const dx = Math.round((targetWidth - dw) / 2);
+  const dy = Math.round((targetHeight - dh) / 2);
+  outCtx.drawImage(extracted, 0, 0, sw, sh, dx, dy, dw, dh);
+
+  return out;
+}
+
 export function extractAndRotateSlice(
   sourceCanvas: HTMLCanvasElement,
   slice: CropSlice,

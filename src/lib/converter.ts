@@ -1,5 +1,5 @@
 import type { ConversionOptions, ConversionProgress, CropSlice, OrientationMode } from '../types';
-import { computeSlices, extractAndRotateSlice } from './slicer';
+import { computeSlices, extractAndRotateSlice, extractFullPage } from './slicer';
 import { imageDataToXtg, imageDataToXth } from './processing/xtg';
 import { applyDither } from './processing/dithering';
 import { getTargetDimensions } from './processing/canvas';
@@ -74,6 +74,25 @@ export interface ConversionResult {
   pageCount: number;
 }
 
+async function processFullPage(
+  sourceCanvas: HTMLCanvasElement,
+  options: ConversionOptions,
+  targetW: number,
+  targetH: number
+): Promise<ArrayBuffer> {
+  const pageCanvas = extractFullPage(sourceCanvas, targetW, targetH);
+  const ctx = pageCanvas.getContext('2d')!;
+  let imageData = ctx.getImageData(0, 0, targetW, targetH);
+
+  imageData = applyContrast(imageData, options.contrast);
+  imageData = applyDither(imageData, options.dithering, options.is2bit);
+
+  if (options.is2bit) {
+    return imageDataToXth(imageData);
+  }
+  return imageDataToXtg(imageData);
+}
+
 export async function convertImages(
   images: Array<{ canvas: HTMLCanvasElement; name: string; orientation: OrientationMode }>,
   options: ConversionOptions,
@@ -83,17 +102,16 @@ export async function convertImages(
   const pages: PageEntry[] = [];
   const { width: targetW, height: targetH } = getTargetDimensions(options.device);
 
-  let totalSlices = 0;
-  const sliceCounts: number[] = [];
+  let totalPages = 0;
+  const pagesPerImage: number[] = [];
 
   for (const img of images) {
     if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
 
-    const imgWidth = img.canvas.width;
-    const imgHeight = img.canvas.height;
-    const { slices } = computeSlices(imgWidth, imgHeight, img.orientation);
-    sliceCounts.push(slices.length);
-    totalSlices += slices.length;
+    const { slices } = computeSlices(img.canvas.width, img.canvas.height, img.orientation);
+    const count = 1 + slices.length; // 1 full page + N slices
+    pagesPerImage.push(count);
+    totalPages += count;
   }
 
   let processed = 0;
@@ -104,12 +122,30 @@ export async function convertImages(
     const img = images[i];
     const { slices } = computeSlices(img.canvas.width, img.canvas.height, img.orientation);
 
+    // 1. Página completa primero
+    if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+
+    onProgress({
+      current: processed,
+      total: totalPages,
+      message: `${img.name}: full page`,
+    });
+
+    const fullData = await processFullPage(img.canvas, options, targetW, targetH);
+    pages.push({
+      data: fullData,
+      width: targetW,
+      height: targetH,
+    });
+    processed++;
+
+    // 2. Los 5 slices
     for (const slice of slices) {
       if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
 
       onProgress({
         current: processed,
-        total: totalSlices,
+        total: totalPages,
         message: `${img.name}: slice ${slice.index + 1}/${slices.length}`,
       });
 
@@ -124,8 +160,8 @@ export async function convertImages(
   }
 
   onProgress({
-    current: totalSlices,
-    total: totalSlices,
+    current: totalPages,
+    total: totalPages,
     message: 'Assembling XTC file...',
   });
 
@@ -140,8 +176,8 @@ export async function convertImages(
   const filename = `${title.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64)}.${ext}`;
 
   onProgress({
-    current: totalSlices,
-    total: totalSlices,
+    current: totalPages,
+    total: totalPages,
     message: 'Done!',
   });
 
