@@ -19,7 +19,11 @@
   --danger: #e94560;
   --radius: 8px;
   --radius-sm: 4px;
+  --radius-lg: 12px;
   --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.2);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.25);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.3);
 }
 
 html, body, #root {
@@ -94,8 +98,31 @@ html, body, #root {
   padding: 40px;
 }
 
-.empty-icon { font-size: 64px; margin-bottom: 16px; }
-.empty-hint { font-size: 12px; margin-top: 8px; color: var(--text-dim); opacity: 0.7; }
+.empty-icon {
+  margin-bottom: 16px;
+  color: var(--text-dim);
+  opacity: 0.4;
+  animation: fadeIn 0.4s ease;
+}
+.empty-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--text);
+}
+.empty-text {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+}
+.empty-hint {
+  font-size: 12px;
+  margin-top: 8px;
+  color: var(--text-dim);
+  opacity: 0.6;
+  max-width: 280px;
+  line-height: 1.4;
+}
 
 /* === Config Panel === */
 .config-panel {
@@ -105,6 +132,7 @@ html, body, #root {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  box-shadow: var(--shadow-sm);
 }
 
 .config-row {
@@ -257,6 +285,7 @@ html, body, #root {
   overflow: hidden;
   flex: 1;
   min-height: 0;
+  box-shadow: var(--shadow-sm);
 }
 
 .image-list-header {
@@ -368,6 +397,8 @@ html, body, #root {
   position: relative;
   min-height: 200px;
   overflow: hidden;
+  box-shadow: var(--shadow-md);
+  animation: fadeIn 0.25s ease;
 }
 
 .preview-canvas {
@@ -411,11 +442,18 @@ html, body, #root {
   border: 2px solid transparent;
   border-radius: var(--radius-sm);
   overflow: hidden;
-  transition: border-color 0.15s;
+  transition: border-color 0.15s, transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.slice-thumb:hover { border-color: var(--text-dim); }
-.slice-thumb.selected { border-color: var(--accent); }
+.slice-thumb:hover {
+  border-color: var(--text-dim);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+.slice-thumb.selected {
+  border-color: var(--accent);
+  box-shadow: 0 2px 8px rgba(233,69,96,0.25);
+}
 
 .slice-thumb img,
 .slice-thumb canvas {
@@ -446,6 +484,7 @@ html, body, #root {
   border-radius: var(--radius);
   padding: 10px 12px;
   flex-shrink: 0;
+  box-shadow: var(--shadow-sm);
 }
 
 .batch-progress {
@@ -459,17 +498,38 @@ html, body, #root {
 }
 
 .progress-bar {
-  height: 4px;
+  height: 8px;
   background: var(--bg);
-  border-radius: 2px;
+  border-radius: 4px;
   overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
-  background: var(--accent);
-  border-radius: 2px;
-  transition: width 0.2s;
+  background: linear-gradient(90deg, var(--accent), #ff6b81);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+  box-shadow: 0 0 8px rgba(233,69,96,0.4);
+  position: relative;
+}
+
+.progress-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,255,255,0.15) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 .batch-actions {
@@ -554,6 +614,21 @@ html, body, #root {
   image-rendering: pixelated;
 }
 
+/* === Animations === */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes pulse {
+  0% { box-shadow: var(--shadow-md); }
+  50% { box-shadow: 0 0 0 4px rgba(233,69,96,0.2), var(--shadow-md); }
+  100% { box-shadow: var(--shadow-md); }
+}
+.pulse {
+  animation: pulse 0.4s ease;
+}
+
 /* === Error === */
 .error-banner {
   background: rgba(233,69,96,0.12);
@@ -565,10 +640,10 @@ html, body, #root {
 }
 
 /* === Scrollbar === */
-::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; border: 2px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); border: 2px solid transparent; background-clip: content-box; }
 
 /* === Responsive === */
 @media (max-width: 768px) {

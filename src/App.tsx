@@ -96,9 +96,19 @@ export default function App() {
             />
           ) : (
             <div className="app-empty">
-              <div className="empty-icon">🎨</div>
-              <h2>No images loaded</h2>
-              <p>Select comic pages above to get started</p>
+              <div className="empty-icon">
+                <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="8" y="8" width="64" height="64" rx="6" stroke="currentColor" strokeWidth="2" fill="none" opacity="0.3"/>
+                  <rect x="16" y="16" width="24" height="18" rx="2" stroke="currentColor" strokeWidth="1.5" fill="none" opacity="0.2"/>
+                  <rect x="44" y="16" width="20" height="18" rx="2" stroke="currentColor" strokeWidth="1.5" fill="none" opacity="0.2"/>
+                  <rect x="16" y="38" width="20" height="24" rx="2" stroke="currentColor" strokeWidth="1.5" fill="none" opacity="0.2"/>
+                  <rect x="40" y="38" width="24" height="24" rx="2" stroke="currentColor" strokeWidth="1.5" fill="none" opacity="0.2"/>
+                  <line x1="8" y1="36" x2="72" y2="36" stroke="currentColor" strokeWidth="0.5" opacity="0.15"/>
+                  <line x1="38" y1="10" x2="38" y2="70" stroke="currentColor" strokeWidth="0.5" opacity="0.15"/>
+                </svg>
+              </div>
+              <h2 className="empty-title">No images loaded</h2>
+              <p className="empty-text">Drop comic pages here or choose files above</p>
               <p className="empty-hint">
                 Each image is automatically sliced into 5 overlapping strips at 5:3 aspect ratio
               </p>

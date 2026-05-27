@@ -35,11 +35,13 @@ export function PreviewPanel({
 }: PreviewPanelProps) {
   const imgRef = useRef<HTMLImageElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [naturalSize, setNaturalSize] = useState({ width: 0, height: 0 });
   const [slices, setSlices] = useState<CropSlice[]>([]);
   const [selectedSlice, setSelectedSlice] = useState(-1);
   const [previewCanvases, setPreviewCanvases] = useState<HTMLCanvasElement[]>([]);
   const [showModal, setShowModal] = useState(false);
+  const [pulsing, setPulsing] = useState(false);
 
   const hasNaturalSize = naturalSize.width > 0 && naturalSize.height > 0;
 
@@ -161,6 +163,13 @@ export function PreviewPanel({
     return () => window.removeEventListener('keydown', handler);
   }, [showModal]);
 
+  useEffect(() => {
+    if (selectedSlice < 0) return;
+    setPulsing(true);
+    const timer = setTimeout(() => setPulsing(false), 400);
+    return () => clearTimeout(timer);
+  }, [selectedSlice]);
+
   return (
     <div className="preview-panel">
       <div className="preview-header">
@@ -169,12 +178,14 @@ export function PreviewPanel({
           <button
             className={`btn btn-sm ${orientation === 'portrait' ? 'active' : ''}`}
             onClick={() => onOrientationChange('portrait')}
+            title="Treat as portrait page (horizontal slices)"
           >
             ↕ Portrait
           </button>
           <button
             className={`btn btn-sm ${orientation === 'landscape' ? 'active' : ''}`}
             onClick={() => onOrientationChange('landscape')}
+            title="Treat as landscape spread (vertical slices)"
           >
             ↔ Landscape
           </button>
@@ -183,7 +194,7 @@ export function PreviewPanel({
 
       <img ref={imgRef} src={imageUrl} alt="" style={{ display: 'none' }} />
 
-      <div className="preview-canvas-container">
+      <div className={`preview-canvas-container${pulsing ? ' pulse' : ''}`} ref={containerRef}>
         {hasNaturalSize && (
           <>
             <canvas ref={canvasRef} className="preview-canvas" />

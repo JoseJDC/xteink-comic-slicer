@@ -47,7 +47,7 @@ export const ConfigPanel = memo(function ConfigPanel({
     <div className="config-panel">
       <div className="config-row">
         <label className="config-label-file" htmlFor="file-input">Images:</label>
-        <div className="config-file-wrap">
+        <div className="config-file-wrap" title="Select comic pages (JPG/PNG) or CBZ archives">
           <input
             id="file-input"
             type="file"
@@ -64,10 +64,10 @@ export const ConfigPanel = memo(function ConfigPanel({
       <div className="config-row">
         <label>Device:</label>
         <div className="config-btn-group">
-          <button className={device === 'X4' ? 'active' : ''} onClick={() => onDeviceChange('X4')} disabled={disabled}>
+          <button className={device === 'X4' ? 'active' : ''} onClick={() => onDeviceChange('X4')} disabled={disabled} title="Xteink X4 — 480×800 px">
             X4 (480×800)
           </button>
-          <button className={device === 'X3' ? 'active' : ''} onClick={() => onDeviceChange('X3')} disabled={disabled}>
+          <button className={device === 'X3' ? 'active' : ''} onClick={() => onDeviceChange('X3')} disabled={disabled} title="Xteink X3 — 528×792 px">
             X3 (528×792)
           </button>
         </div>
@@ -76,10 +76,10 @@ export const ConfigPanel = memo(function ConfigPanel({
       <div className="config-row">
         <label>Color:</label>
         <div className="config-btn-group">
-          <button className={!is2bit ? 'active' : ''} onClick={() => onIs2bitChange(false)} disabled={disabled}>
+          <button className={!is2bit ? 'active' : ''} onClick={() => onIs2bitChange(false)} disabled={disabled} title="1-bit black and white (smaller files)">
             1-bit (XTC)
           </button>
-          <button className={is2bit ? 'active' : ''} onClick={() => onIs2bitChange(true)} disabled={disabled}>
+          <button className={is2bit ? 'active' : ''} onClick={() => onIs2bitChange(true)} disabled={disabled} title="2-bit grayscale with 4 levels (better quality)">
             2-bit (XTCH)
           </button>
         </div>
@@ -92,6 +92,7 @@ export const ConfigPanel = memo(function ConfigPanel({
           value={dithering}
           onChange={(e) => onDitheringChange(e.target.value as DitherAlgorithm)}
           disabled={disabled}
+          title="Dithering algorithm for black-and-white conversion"
         >
           {DITHER_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -106,16 +107,17 @@ export const ConfigPanel = memo(function ConfigPanel({
           value={contrast}
           onChange={(e) => onContrastChange(parseInt(e.target.value))}
           disabled={disabled}
+          title="Increase contrast to darken blacks and brighten whites (0 = off)"
         />
       </div>
 
       <div className="config-row">
         <label>Output:</label>
         <div className="config-btn-group">
-          <button className={mergeMode === 'single' ? 'active' : ''} onClick={() => onMergeModeChange('single')} disabled={disabled}>
+          <button className={mergeMode === 'single' ? 'active' : ''} onClick={() => onMergeModeChange('single')} disabled={disabled} title="Merge all images into one .xtc file">
             Single file
           </button>
-          <button className={mergeMode === 'separate' ? 'active' : ''} onClick={() => onMergeModeChange('separate')} disabled={disabled}>
+          <button className={mergeMode === 'separate' ? 'active' : ''} onClick={() => onMergeModeChange('separate')} disabled={disabled} title="Generate one .xtc file per source image">
             Separate files
           </button>
         </div>
