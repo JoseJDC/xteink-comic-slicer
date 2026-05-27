@@ -271,8 +271,9 @@ html, body, #root {
 }
 
 .image-list-scroll {
-  overflow-y: auto;
   flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .image-list-item {
@@ -416,11 +417,15 @@ html, body, #root {
 .slice-thumb:hover { border-color: var(--text-dim); }
 .slice-thumb.selected { border-color: var(--accent); }
 
-.slice-thumb img {
+.slice-thumb img,
+.slice-thumb canvas {
   width: 100%;
   height: 80px;
-  object-fit: cover;
   display: block;
+}
+
+.slice-thumb canvas {
+  image-rendering: pixelated;
 }
 
 .slice-label {

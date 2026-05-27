@@ -1,10 +1,11 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, memo } from 'react';
 import type { ImageFile, ConversionOptions, ConversionProgress, OrientationMode } from '../types';
 import { convertImages } from '../lib/converter';
 
 interface BatchPanelProps {
   images: ImageFile[];
   options: ConversionOptions;
+  mergeMode: 'single' | 'separate';
 }
 
 interface SourceGroup {
@@ -44,10 +45,9 @@ function triggerDownload(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-export function BatchPanel({ images, options }: BatchPanelProps) {
+export const BatchPanel = memo(function BatchPanel({ images, options, mergeMode }: BatchPanelProps) {
   const [progress, setProgress] = useState<ConversionProgress | null>(null);
   const [converting, setConverting] = useState(false);
-  const [showMergeDialog, setShowMergeDialog] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
   const doConvert = async (groups: SourceGroup[]) => {
@@ -123,24 +123,12 @@ export function BatchPanel({ images, options }: BatchPanelProps) {
   const handleConvertClick = () => {
     if (images.length === 0) return;
     const groups = groupBySource(images);
-    if (groups.length > 1) {
-      setShowMergeDialog(true);
+    if (mergeMode === 'single') {
+      const allImages = groups.flatMap((g) => g.images);
+      doConvert([{ title: 'comic', images: allImages }]);
     } else {
       doConvert(groups);
     }
-  };
-
-  const handleMergeAll = () => {
-    setShowMergeDialog(false);
-    const groups = groupBySource(images);
-    const allImages = groups.flatMap((g) => g.images);
-    doConvert([{ title: 'comic', images: allImages }]);
-  };
-
-  const handleSeparate = () => {
-    setShowMergeDialog(false);
-    const groups = groupBySource(images);
-    doConvert(groups);
   };
 
   const handleCancelConvert = () => {
@@ -187,26 +175,6 @@ export function BatchPanel({ images, options }: BatchPanelProps) {
         )}
       </div>
 
-      {showMergeDialog && (
-        <div className="modal-overlay">
-          <div className="modal-dialog">
-            <p className="modal-text">
-              Export as a single XTC file or as separate files (one per source)?
-            </p>
-            <div className="modal-actions">
-              <button className="btn btn-primary" onClick={handleMergeAll}>
-                Single file
-              </button>
-              <button className="btn" onClick={handleSeparate}>
-                Separate files
-              </button>
-              <button className="btn" onClick={() => setShowMergeDialog(false)}>
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
-}
+});

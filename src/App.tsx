@@ -14,6 +14,7 @@ export default function App() {
   const [dithering, setDithering] = useState<DitherAlgorithm>('floyd-steinberg');
   const [is2bit, setIs2bit] = useState(false);
   const [contrast, setContrast] = useState(0);
+  const [mergeMode, setMergeMode] = useState<'single' | 'separate'>('single');
 
   const options: ConversionOptions = { device, dithering, is2bit, contrast };
 
@@ -53,10 +54,12 @@ export default function App() {
             dithering={dithering}
             is2bit={is2bit}
             contrast={contrast}
+            mergeMode={mergeMode}
             onDeviceChange={setDevice}
             onDitheringChange={setDithering}
             onIs2bitChange={setIs2bit}
             onContrastChange={setContrast}
+            onMergeModeChange={setMergeMode}
             onFilesSelected={handleFilesSelected}
             onCbzSelected={handleCbzSelected}
             disabled={disabled}
@@ -76,6 +79,7 @@ export default function App() {
             <BatchPanel
               images={images.images}
               options={options}
+              mergeMode={mergeMode}
             />
           )}
         </aside>

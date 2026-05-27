@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, memo } from 'react';
 import type { CropSlice, OrientationMode, ConversionOptions } from '../types';
 import { computeSlices, extractAndRotateSlice, extractFullPage } from '../lib/slicer';
 import { applyDither } from '../lib/processing/dithering';
@@ -12,6 +12,20 @@ interface PreviewPanelProps {
   options: ConversionOptions;
 }
 
+const SliceCanvas = memo(function SliceCanvas({ canvas }: { canvas: HTMLCanvasElement }) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ctx = el.getContext('2d');
+    if (!ctx) return;
+    el.width = canvas.width;
+    el.height = canvas.height;
+    ctx.drawImage(canvas, 0, 0);
+  }, [canvas]);
+  return <canvas ref={ref} />;
+});
+
 export function PreviewPanel({
   imageUrl,
   imageName,
@@ -23,8 +37,8 @@ export function PreviewPanel({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [naturalSize, setNaturalSize] = useState({ width: 0, height: 0 });
   const [slices, setSlices] = useState<CropSlice[]>([]);
-  const [selectedSlice, setSelectedSlice] = useState(-1); // -1 = full page, 0+ = slice
-  const [slicePreviews, setSlicePreviews] = useState<string[]>([]);
+  const [selectedSlice, setSelectedSlice] = useState(-1);
+  const [previewCanvases, setPreviewCanvases] = useState<HTMLCanvasElement[]>([]);
 
   const hasNaturalSize = naturalSize.width > 0 && naturalSize.height > 0;
 
@@ -47,12 +61,12 @@ export function PreviewPanel({
     const result = computeSlices(naturalSize.width, naturalSize.height, orientation);
     setSlices(result.slices);
     setSelectedSlice(-1);
-    generateSlicePreviews(result.slices);
+    generatePreviews(result.slices);
   }, [naturalSize, orientation, hasNaturalSize]);
 
-  const generateSlicePreviews = useCallback(async (slices: CropSlice[]) => {
+  const generatePreviews = useCallback(async (slicesToProcess: CropSlice[]) => {
     const img = imgRef.current;
-    if (!img) return;
+    if (!img || slicesToProcess.length === 0) return;
 
     const sourceCanvas = document.createElement('canvas');
     sourceCanvas.width = img.naturalWidth;
@@ -61,34 +75,31 @@ export function PreviewPanel({
     ctx.drawImage(img, 0, 0);
 
     const { width: tw, height: th } = getTargetDimensions(options.device);
+    const canvases: HTMLCanvasElement[] = [];
 
-    const previews: string[] = [];
-
-    // Full page preview primero
     const fullOut = extractFullPage(sourceCanvas, tw, th);
     let fullCtx = fullOut.getContext('2d')!;
     let fullData = fullCtx.getImageData(0, 0, tw, th);
     fullData = applyDither(fullData, options.dithering, options.is2bit);
     fullCtx.putImageData(fullData, 0, 0);
-    previews.push(fullOut.toDataURL('image/png'));
+    canvases.push(fullOut);
 
-    // Slice previews
-    for (const slice of slices) {
-      const out = extractAndRotateSlice(sourceCanvas, slice, tw, th);
+    for (const sl of slicesToProcess) {
+      const out = extractAndRotateSlice(sourceCanvas, sl, tw, th);
       const outCtx = out.getContext('2d')!;
       let imageData = outCtx.getImageData(0, 0, tw, th);
       imageData = applyDither(imageData, options.dithering, options.is2bit);
       outCtx.putImageData(imageData, 0, 0);
-      previews.push(out.toDataURL('image/png'));
+      canvases.push(out);
     }
-    setSlicePreviews(previews);
-  }, [orientation, options]);
+    setPreviewCanvases(canvases);
+  }, [orientation, options.device, options.dithering, options.is2bit]);
 
   useEffect(() => {
     if (hasNaturalSize && slices.length > 0) {
-      generateSlicePreviews(slices);
+      generatePreviews(slices);
     }
-  }, [options.dithering, options.is2bit, hasNaturalSize, slices.length]);
+  }, [options.dithering, options.is2bit, hasNaturalSize, slices, generatePreviews]);
 
   const drawOverlay = useCallback(() => {
     if (!canvasRef.current || !hasNaturalSize) return;
@@ -104,15 +115,10 @@ export function PreviewPanel({
 
     canvas.width = dispW;
     canvas.height = dispH;
-    const ctx = canvas.getContext('2d')!;
-    ctx.drawImage(imgRef.current!, 0, 0, dispW, dispH);
+    const cctx = canvas.getContext('2d')!;
+    cctx.drawImage(imgRef.current!, 0, 0, dispW, dispH);
 
-    // Cuando está seleccionada la página completa, no dibujar overlays
     if (selectedSlice < 0) return;
-
-    ctx.strokeStyle = '#e94560';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([6, 3]);
 
     for (let i = 0; i < slices.length; i++) {
       const s = slices[i];
@@ -122,22 +128,22 @@ export function PreviewPanel({
       const sh = s.height * scale;
 
       if (i === selectedSlice) {
-        ctx.fillStyle = 'rgba(233, 69, 96, 0.15)';
-        ctx.fillRect(sx, sy, sw, sh);
-        ctx.setLineDash([]);
-        ctx.strokeStyle = '#e94560';
-        ctx.lineWidth = 3;
-        ctx.strokeRect(sx, sy, sw, sh);
-        ctx.setLineDash([6, 3]);
-        ctx.strokeStyle = '#e94560';
-        ctx.lineWidth = 2;
+        cctx.fillStyle = 'rgba(233, 69, 96, 0.15)';
+        cctx.fillRect(sx, sy, sw, sh);
+        cctx.strokeStyle = '#e94560';
+        cctx.lineWidth = 3;
+        cctx.strokeRect(sx, sy, sw, sh);
       } else {
-        ctx.strokeRect(sx, sy, sw, sh);
+        cctx.strokeStyle = '#e94560';
+        cctx.lineWidth = 2;
+        cctx.setLineDash([6, 3]);
+        cctx.strokeRect(sx, sy, sw, sh);
+        cctx.setLineDash([]);
       }
 
-      ctx.fillStyle = '#e94560';
-      ctx.font = 'bold 14px sans-serif';
-      ctx.fillText(`${i + 1}`, sx + 6, sy + 18);
+      cctx.fillStyle = '#e94560';
+      cctx.font = 'bold 14px sans-serif';
+      cctx.fillText(`${i + 1}`, sx + 6, sy + 18);
     }
   }, [naturalSize, slices, selectedSlice, hasNaturalSize]);
 
@@ -183,17 +189,17 @@ export function PreviewPanel({
         )}
       </div>
 
-      {slicePreviews.length > 0 && (
+      {previewCanvases.length > 0 && (
         <div className="slice-strip">
-          {slicePreviews.map((url, i) => {
-            const sliceIndex = i - 1; // -1 = full page, 0+ = slice
+          {previewCanvases.map((canvas, i) => {
+            const sliceIndex = i - 1;
             return (
               <div
                 key={i}
                 className={`slice-thumb ${sliceIndex === selectedSlice ? 'selected' : ''}`}
                 onClick={() => setSelectedSlice(sliceIndex)}
               >
-                <img src={url} alt={i === 0 ? 'Full page' : `Slice ${i}`} />
+                <SliceCanvas canvas={canvas} />
                 <span className="slice-label">{i === 0 ? 'Full' : `${i}`}</span>
               </div>
             );

@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { DitherAlgorithm, Device } from '../types';
 
 interface ConfigPanelProps {
@@ -5,10 +6,12 @@ interface ConfigPanelProps {
   dithering: DitherAlgorithm;
   is2bit: boolean;
   contrast: number;
+  mergeMode: 'single' | 'separate';
   onDeviceChange: (d: Device) => void;
   onDitheringChange: (d: DitherAlgorithm) => void;
   onIs2bitChange: (v: boolean) => void;
   onContrastChange: (v: number) => void;
+  onMergeModeChange: (v: 'single' | 'separate') => void;
   onFilesSelected: (files: FileList) => void;
   onCbzSelected: (files: File[]) => void;
   disabled: boolean;
@@ -22,9 +25,9 @@ const DITHER_OPTIONS: { value: DitherAlgorithm; label: string }[] = [
   { value: 'ordered', label: 'Ordered (Bayer)' },
 ];
 
-export function ConfigPanel({
-  device, dithering, is2bit, contrast,
-  onDeviceChange, onDitheringChange, onIs2bitChange, onContrastChange,
+export const ConfigPanel = memo(function ConfigPanel({
+  device, dithering, is2bit, contrast, mergeMode,
+  onDeviceChange, onDitheringChange, onIs2bitChange, onContrastChange, onMergeModeChange,
   onFilesSelected, onCbzSelected, disabled,
 }: ConfigPanelProps) {
 
@@ -105,6 +108,18 @@ export function ConfigPanel({
           disabled={disabled}
         />
       </div>
+
+      <div className="config-row">
+        <label>Output:</label>
+        <div className="config-btn-group">
+          <button className={mergeMode === 'single' ? 'active' : ''} onClick={() => onMergeModeChange('single')} disabled={disabled}>
+            Single file
+          </button>
+          <button className={mergeMode === 'separate' ? 'active' : ''} onClick={() => onMergeModeChange('separate')} disabled={disabled}>
+            Separate files
+          </button>
+        </div>
+      </div>
     </div>
   );
-}
+});
