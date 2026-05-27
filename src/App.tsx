@@ -39,8 +39,24 @@ export default function App() {
   }, [images]);
 
   const disabled = false;
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    return (localStorage.getItem('comic-slicer-theme') as 'dark' | 'light') || 'dark';
+  });
   const [isDragging, setIsDragging] = useState(false);
   const dragCount = useRef(0);
+
+  const toggleTheme = useCallback(() => {
+    setTheme(prev => {
+      const next = prev === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('comic-slicer-theme', next);
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -98,12 +114,52 @@ export default function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <h1 className="app-title">Comic Slicer</h1>
-        <p className="app-subtitle">Convert comics to XTC format for Xteink e-readers</p>
+        <div className="app-header-left">
+          <button
+            className="btn-icon"
+            onClick={() => setSidebarCollapsed(v => !v)}
+            title={sidebarCollapsed ? 'Show sidebar' : 'Hide sidebar'}
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <line x1="2" y1="4" x2="14" y2="4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              <line x1="2" y1="8" x2="14" y2="8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              <line x1="2" y1="12" x2="14" y2="12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+          </button>
+          <div>
+            <h1 className="app-title">Comic Slicer</h1>
+            <p className="app-subtitle">Convert comics to XTC format for Xteink e-readers</p>
+          </div>
+        </div>
+        <div className="app-header-right">
+          <button
+            className="btn-icon"
+            onClick={toggleTheme}
+            title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
+          >
+            {theme === 'dark' ? (
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="8" cy="8" r="3" stroke="currentColor" strokeWidth="1.5"/>
+                <line x1="8" y1="1" x2="8" y2="3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                <line x1="8" y1="13" x2="8" y2="15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                <line x1="1" y1="8" x2="3" y2="8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                <line x1="13" y1="8" x2="15" y2="8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                <line x1="3.5" y1="3.5" x2="4.5" y2="4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                <line x1="11.5" y1="11.5" x2="12.5" y2="12.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                <line x1="3.5" y1="12.5" x2="4.5" y2="11.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                <line x1="11.5" y1="4.5" x2="12.5" y2="3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 10a6 6 0 0 1-6-6c0-1.2.35-2.32.96-3.27A7 7 0 0 0 4 10a7 7 0 0 0 7 7c1.63 0 3.13-.56 4.31-1.5A6.03 6.03 0 0 1 12 10z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            )}
+          </button>
+        </div>
       </header>
 
       <main className="app-main">
-        <aside className="app-sidebar">
+        <aside className={`app-sidebar${sidebarCollapsed ? ' collapsed' : ''}`}>
           <ConfigPanel
             device={device}
             dithering={dithering}

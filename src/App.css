@@ -79,9 +79,27 @@ html, body, #root {
 }
 
 .app-header {
-  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
   background: var(--bg2);
   border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  gap: 12px;
+}
+
+.app-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.app-header-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   flex-shrink: 0;
 }
 
@@ -89,12 +107,35 @@ html, body, #root {
   font-size: 20px;
   font-weight: 700;
   color: var(--accent);
+  white-space: nowrap;
 }
 
 .app-subtitle {
   font-size: 12px;
   color: var(--text-dim);
   margin-top: 2px;
+  white-space: nowrap;
+}
+
+.btn-icon {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-icon:hover {
+  background: var(--hover-bg);
+  color: var(--text);
 }
 
 .app-main {
@@ -113,6 +154,15 @@ html, body, #root {
   flex-direction: column;
   gap: 12px;
   padding: 12px;
+  transition: width 0.25s ease, padding 0.25s ease, opacity 0.2s ease;
+}
+
+.app-sidebar.collapsed {
+  width: 0 !important;
+  padding: 0 !important;
+  overflow: hidden;
+  opacity: 0;
+  border-right: none;
 }
 
 .app-content {
@@ -192,7 +242,7 @@ html, body, #root {
 .config-row select {
   padding: 4px 6px;
   background: var(--bg);
-  border: 1px solid rgba(255,255,255,0.12);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   color: var(--text);
   font-size: 12px;
@@ -228,8 +278,16 @@ html, body, #root {
   transition: all 0.15s;
 }
 
+.config-btn-group button:hover { background: var(--hover-bg); }
+.config-btn-group button.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.config-btn-group button:disabled { opacity: 0.4; cursor: not-allowed; }
+
 .config-file-wrap:hover .config-file-btn {
-  background: rgba(233,69,96,0.1);
+  background: var(--accent-alpha-hover);
 }
 
 .config-label-file {
@@ -240,13 +298,113 @@ html, body, #root {
   flex-shrink: 0;
 }
 
+.config-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 2px 0;
+}
+
+.config-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.config-preset-item {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+}
+
+.config-preset-btn {
+  padding: 3px 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.config-preset-btn:hover {
+  background: var(--accent-alpha-hover);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.config-preset-del {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 10px;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 0.15s;
+}
+
+.config-preset-del:hover {
+  background: rgba(233,69,96,0.15);
+  color: var(--accent);
+}
+
+.config-preset-add {
+  padding: 3px 8px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.config-preset-add:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-alpha-hover);
+}
+
+.config-preset-input-row {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  width: 100%;
+}
+
+.config-preset-input {
+  flex: 1;
+  min-width: 0;
+  padding: 3px 6px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 11px;
+  outline: none;
+}
+
+.config-preset-input:focus {
+  border-color: var(--accent);
+}
+
 /* === Buttons === */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 6px 14px;
-  border: 1px solid rgba(255,255,255,0.12);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text);
@@ -271,7 +429,7 @@ html, body, #root {
 .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
 
 .btn-danger { background: transparent; border-color: var(--danger); color: var(--danger); }
-.btn-danger:hover:not(:disabled) { background: rgba(233,69,96,0.1); }
+.btn-danger:hover:not(:disabled) { background: var(--accent-alpha-hover); }
 
 
 
@@ -313,8 +471,8 @@ html, body, #root {
   transition: background 0.1s;
 }
 
-.image-list-item:hover { background: rgba(255,255,255,0.04); }
-.image-list-item.selected { background: rgba(233,69,96,0.12); }
+.image-list-item:hover { background: var(--hover-bg-subtle); }
+.image-list-item.selected { background: var(--accent-alpha); }
 .image-list-item.processed { opacity: 0.7; }
 
 .image-list-thumb {
@@ -392,7 +550,7 @@ html, body, #root {
   justify-content: center;
   background: var(--bg2);
   border-radius: var(--radius);
-  border: 1px solid rgba(255,255,255,0.06);
+  border: 1px solid var(--border);
   position: relative;
   min-height: 200px;
   overflow: hidden;
@@ -411,7 +569,7 @@ html, body, #root {
   bottom: 8px;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(0,0,0,0.75);
+  background: var(--overlay-bg);
   padding: 4px 12px;
   border-radius: 12px;
   font-size: 11px;
@@ -434,7 +592,7 @@ html, body, #root {
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(255,255,255,0.05) 50%,
+    var(--shimmer) 50%,
     transparent 100%
   );
   background-size: 200% 100%;
@@ -473,7 +631,7 @@ html, body, #root {
 }
 .slice-thumb.selected {
   border-color: var(--accent);
-  box-shadow: 0 2px 8px rgba(233,69,96,0.25);
+  box-shadow: 0 2px 8px var(--accent-glow);
 }
 
 .slice-thumb img,
@@ -491,7 +649,7 @@ html, body, #root {
   position: absolute;
   top: 2px;
   left: 2px;
-  background: rgba(0,0,0,0.7);
+  background: var(--overlay-light);
   color: #fff;
   font-size: 10px;
   font-weight: 700;
@@ -512,7 +670,7 @@ html, body, #root {
   white-space: nowrap;
   pointer-events: none;
   z-index: 10;
-  border: 1px solid rgba(255,255,255,0.1);
+  border: 1px solid var(--border-strong);
   line-height: 1.5;
 }
 
@@ -587,7 +745,7 @@ html, body, #root {
 
 .modal-dialog {
   background: var(--bg2);
-  border: 1px solid rgba(255,255,255,0.1);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   padding: 20px;
   max-width: 360px;
@@ -613,7 +771,7 @@ html, body, #root {
 /* === Slice Preview Modal === */
 .slice-modal {
   background: var(--bg2);
-  border: 1px solid rgba(255,255,255,0.1);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius);
   display: flex;
   flex-direction: column;
@@ -711,7 +869,7 @@ html, body, #root {
 
 /* === Error === */
 .error-banner {
-  background: rgba(233,69,96,0.12);
+  background: var(--accent-alpha);
   border: 1px solid var(--danger);
   color: var(--danger);
   padding: 8px 12px;
@@ -722,11 +880,11 @@ html, body, #root {
 /* === Scrollbar === */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; border: 2px solid transparent; background-clip: content-box; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); border: 2px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 4px; border: 2px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); border: 2px solid transparent; background-clip: content-box; }
 
 /* === Responsive === */
 @media (max-width: 768px) {
   .app-main { flex-direction: column; }
-  .app-sidebar { width: 100%; max-height: 50vh; border-right: none; border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .app-sidebar { width: 100%; max-height: 50vh; border-right: none; border-bottom: 1px solid var(--border); }
 }
