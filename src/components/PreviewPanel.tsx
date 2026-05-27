@@ -39,6 +39,7 @@ export function PreviewPanel({
   const [slices, setSlices] = useState<CropSlice[]>([]);
   const [selectedSlice, setSelectedSlice] = useState(-1);
   const [previewCanvases, setPreviewCanvases] = useState<HTMLCanvasElement[]>([]);
+  const [showModal, setShowModal] = useState(false);
 
   const hasNaturalSize = naturalSize.width > 0 && naturalSize.height > 0;
 
@@ -151,6 +152,15 @@ export function PreviewPanel({
     drawOverlay();
   }, [drawOverlay]);
 
+  useEffect(() => {
+    if (!showModal) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowModal(false);
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [showModal]);
+
   return (
     <div className="preview-panel">
       <div className="preview-header">
@@ -197,13 +207,34 @@ export function PreviewPanel({
               <div
                 key={i}
                 className={`slice-thumb ${sliceIndex === selectedSlice ? 'selected' : ''}`}
-                onClick={() => setSelectedSlice(sliceIndex)}
+                onClick={() => {
+                  setSelectedSlice(sliceIndex);
+                  setShowModal(true);
+                }}
               >
                 <SliceCanvas canvas={canvas} />
                 <span className="slice-label">{i === 0 ? 'Full' : `${i}`}</span>
               </div>
             );
           })}
+        </div>
+      )}
+
+      {showModal && (
+        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+          <div className="slice-modal" onClick={e => e.stopPropagation()}>
+            <div className="slice-modal-header">
+              <span className="slice-modal-title">
+                {imageName} — {selectedSlice < 0 ? 'Full page' : `Slice ${selectedSlice + 1}`}
+              </span>
+              <button className="btn btn-sm" onClick={() => setShowModal(false)}>✕</button>
+            </div>
+            <div className="slice-modal-body">
+              {previewCanvases[selectedSlice < 0 ? 0 : selectedSlice + 1] && (
+                <SliceCanvas canvas={previewCanvases[selectedSlice < 0 ? 0 : selectedSlice + 1]} />
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
