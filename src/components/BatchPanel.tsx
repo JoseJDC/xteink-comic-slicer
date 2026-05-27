@@ -47,6 +47,7 @@ function triggerDownload(blob: Blob, filename: string) {
 
 export const BatchPanel = memo(function BatchPanel({ images, options, mergeMode }: BatchPanelProps) {
   const [progress, setProgress] = useState<ConversionProgress | null>(null);
+  const [fileProgress, setFileProgress] = useState<ConversionProgress | null>(null);
   const [converting, setConverting] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -54,18 +55,16 @@ export const BatchPanel = memo(function BatchPanel({ images, options, mergeMode 
     setConverting(true);
     abortRef.current = new AbortController();
 
-    setProgress({ current: 0, total: groups.length, message: `Converting ${groups.length} file(s)\u2026` });
+    setFileProgress({ current: 0, total: groups.length, message: `Converting ${groups.length} file(s)\u2026` });
+    setProgress(null);
 
     try {
       for (let g = 0; g < groups.length; g++) {
         if (abortRef.current?.signal.aborted) break;
         const group = groups[g];
 
-        setProgress({
-          current: g,
-          total: groups.length,
-          message: `Loading images for "${group.title}"\u2026`,
-        });
+        setFileProgress({ current: g + 1, total: groups.length, message: `Loading "${group.title}"\u2026` });
+        setProgress({ current: 0, total: 0, message: `Loading images\u2026` });
 
         const loaded = await Promise.all(
           group.images.map((img) => {
@@ -98,6 +97,8 @@ export const BatchPanel = memo(function BatchPanel({ images, options, mergeMode 
 
         if (abortRef.current?.signal.aborted) break;
 
+        setFileProgress({ current: g + 1, total: groups.length, message: group.title });
+
         const result = await convertImages(
           loaded, options, setProgress, abortRef.current.signal, group.title
         );
@@ -106,12 +107,14 @@ export const BatchPanel = memo(function BatchPanel({ images, options, mergeMode 
       }
 
       if (!abortRef.current?.signal.aborted) {
-        setProgress({ current: groups.length, total: groups.length, message: 'Done!' });
+        setFileProgress({ current: groups.length, total: groups.length, message: 'Done!' });
       }
     } catch (err: any) {
       if (err.name === 'AbortError') {
+        setFileProgress({ current: 0, total: 0, message: 'Cancelled' });
         setProgress({ current: 0, total: 0, message: 'Cancelled' });
       } else {
+        setFileProgress({ current: 0, total: 0, message: `Error: ${err.message}` });
         setProgress({ current: 0, total: 0, message: `Error: ${err.message}` });
       }
     } finally {
@@ -139,8 +142,28 @@ export const BatchPanel = memo(function BatchPanel({ images, options, mergeMode 
 
   return (
     <div className="batch-panel">
-      {progress && progress.message && (
+      {fileProgress && fileProgress.message && (
         <div className="batch-progress" aria-live="polite">
+          <div className="progress-text">
+            {fileProgress.total > 0 ? (
+              <>{fileProgress.current}/{fileProgress.total}: {fileProgress.message}</>
+            ) : (
+              <>{fileProgress.message}</>
+            )}
+          </div>
+          {fileProgress.total > 0 && (
+            <div className="progress-bar">
+              <div
+                className="progress-fill"
+                style={{ width: `${(fileProgress.current / fileProgress.total) * 100}%` }}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {progress && progress.message && (
+        <div className="batch-progress batch-progress-detail" aria-live="polite">
           <div className="progress-text">
             {progress.total > 0 ? (
               <>{progress.current}/{progress.total}: {progress.message}</>
