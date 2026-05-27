@@ -68,7 +68,7 @@ export const BatchPanel = memo(function BatchPanel({ images, options, mergeMode 
 
         const loaded = await Promise.all(
           group.images.map((img) => {
-            return new Promise<{ canvas: HTMLCanvasElement; name: string; orientation: OrientationMode }>(
+            return new Promise<{ canvas: HTMLCanvasElement; name: string; orientation: OrientationMode; skipSlicing: boolean; rotation: 0 | 90 | 180 | 270 }>(
               (resolve, reject) => {
                 const el = new Image();
                 el.crossOrigin = 'anonymous';
@@ -78,7 +78,7 @@ export const BatchPanel = memo(function BatchPanel({ images, options, mergeMode 
                   canvas.height = el.naturalHeight;
                   const ctx = canvas.getContext('2d')!;
                   ctx.drawImage(el, 0, 0);
-                  resolve({ canvas, name: img.name, orientation: img.orientation });
+                  resolve({ canvas, name: img.name, orientation: img.orientation, skipSlicing: img.skipSlicing, rotation: img.rotation });
                 };
                 el.onerror = () => {
                   reject(new Error(`Failed to load: ${img.name}`));

@@ -7,6 +7,8 @@ export interface ImageFile {
   url: string;
   processed: boolean;
   orientation: OrientationMode;
+  skipSlicing: boolean;
+  rotation: 0 | 90 | 180 | 270;
   source?: string;
 }
 

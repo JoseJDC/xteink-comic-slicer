@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import type { ConversionOptions, OrientationMode, DitherAlgorithm } from './types';
+import type { ConversionOptions, DitherAlgorithm } from './types';
 import { useImages } from './hooks/useImages';
 import { ConfigPanel } from './components/ConfigPanel';
 import { ImageList } from './components/ImageList';
@@ -15,6 +15,7 @@ export default function App() {
   const [is2bit, setIs2bit] = useState(false);
   const [contrast, setContrast] = useState(0);
   const [mergeMode, setMergeMode] = useState<'single' | 'separate'>('single');
+  const [spoilerBlur, setSpoilerBlur] = useState(false);
 
   const options: ConversionOptions = { device, dithering, is2bit, contrast };
 
@@ -32,10 +33,6 @@ export default function App() {
         console.error('CBZ load error:', file.name, err);
       }
     }
-  }, [images]);
-
-  const handleOrientationChange = useCallback((index: number, orientation: OrientationMode) => {
-    images.setOrientation(index, orientation);
   }, [images]);
 
   const disabled = false;
@@ -218,7 +215,12 @@ export default function App() {
               imageUrl={images.currentImage.url}
               imageName={images.currentImage.name}
               orientation={images.currentImage.orientation}
-              onOrientationChange={(o) => images.setOrientation(images.currentIndex, o)}
+              skipSlicing={images.currentImage.skipSlicing}
+              rotation={images.currentImage.rotation}
+              spoilerBlur={spoilerBlur}
+              onSkipSlicingChange={(v) => images.setSkipSlicing(images.currentIndex, v)}
+              onRotationChange={(r) => images.setRotation(images.currentIndex, r)}
+              onSpoilerBlurChange={setSpoilerBlur}
               options={options}
             />
           ) : (

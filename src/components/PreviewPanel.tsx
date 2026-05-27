@@ -8,7 +8,12 @@ interface PreviewPanelProps {
   imageUrl: string;
   imageName: string;
   orientation: OrientationMode;
-  onOrientationChange: (orientation: OrientationMode) => void;
+  skipSlicing: boolean;
+  rotation: 0 | 90 | 180 | 270;
+  spoilerBlur: boolean;
+  onSkipSlicingChange: (skip: boolean) => void;
+  onRotationChange: (rotation: 0 | 90 | 180 | 270) => void;
+  onSpoilerBlurChange: (blur: boolean) => void;
   options: ConversionOptions;
 }
 
@@ -30,7 +35,12 @@ export function PreviewPanel({
   imageUrl,
   imageName,
   orientation,
-  onOrientationChange,
+  skipSlicing,
+  rotation,
+  spoilerBlur,
+  onSkipSlicingChange,
+  onRotationChange,
+  onSpoilerBlurChange,
   options,
 }: PreviewPanelProps) {
   const imgRef = useRef<HTMLImageElement>(null);
@@ -44,13 +54,50 @@ export function PreviewPanel({
   const [hoveredThumb, setHoveredThumb] = useState(-2);
   const [originalCanvases, setOriginalCanvases] = useState<HTMLCanvasElement[]>([]);
   const [showOriginal, setShowOriginal] = useState(false);
+  const rotatedCache = useRef<{ rotation: number; canvas: HTMLCanvasElement } | null>(null);
 
   const hasNaturalSize = naturalSize.width > 0 && naturalSize.height > 0;
+
+  const effW = (rotation === 90 || rotation === 270) ? naturalSize.height : naturalSize.width;
+  const effH = (rotation === 90 || rotation === 270) ? naturalSize.width : naturalSize.height;
+
+  function getRotatedImage(): HTMLCanvasElement {
+    const img = imgRef.current;
+    if (!img) return document.createElement('canvas');
+    const srcW = img.naturalWidth;
+    const srcH = img.naturalHeight;
+    if (rotation === 0) {
+      if (rotatedCache.current?.rotation === 0 && rotatedCache.current.canvas.width === srcW) {
+        return rotatedCache.current.canvas;
+      }
+      const c = document.createElement('canvas');
+      c.width = srcW; c.height = srcH;
+      c.getContext('2d')!.drawImage(img, 0, 0);
+      rotatedCache.current = { rotation: 0, canvas: c };
+      return c;
+    }
+    if (rotatedCache.current?.rotation === rotation) {
+      return rotatedCache.current.canvas;
+    }
+    const sideways = rotation === 90 || rotation === 270;
+    const c = document.createElement('canvas');
+    c.width = sideways ? srcH : srcW;
+    c.height = sideways ? srcW : srcH;
+    const ctx = c.getContext('2d')!;
+    ctx.save();
+    ctx.translate(c.width / 2, c.height / 2);
+    ctx.rotate(rotation * Math.PI / 180);
+    ctx.drawImage(img, -srcW / 2, -srcH / 2);
+    ctx.restore();
+    rotatedCache.current = { rotation, canvas: c };
+    return c;
+  }
 
   useEffect(() => {
     const img = imgRef.current;
     if (!img) return;
     const onLoad = () => {
+      rotatedCache.current = null;
       setNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
     };
     if (img.complete) {
@@ -62,22 +109,22 @@ export function PreviewPanel({
   }, [imageUrl]);
 
   useEffect(() => {
+    rotatedCache.current = null;
+  }, [rotation]);
+
+  useEffect(() => {
     if (!hasNaturalSize) return;
-    const result = computeSlices(naturalSize.width, naturalSize.height, orientation);
+    const result = computeSlices(effW, effH, orientation);
     setSlices(result.slices);
     setSelectedSlice(-1);
     generatePreviews(result.slices);
-  }, [naturalSize, orientation, hasNaturalSize]);
+  }, [naturalSize, orientation, rotation, hasNaturalSize]);
 
   const generatePreviews = useCallback(async (slicesToProcess: CropSlice[]) => {
     const img = imgRef.current;
-    if (!img || slicesToProcess.length === 0) return;
+    if (!img) return;
 
-    const sourceCanvas = document.createElement('canvas');
-    sourceCanvas.width = img.naturalWidth;
-    sourceCanvas.height = img.naturalHeight;
-    const ctx = sourceCanvas.getContext('2d')!;
-    ctx.drawImage(img, 0, 0);
+    const sourceCanvas = getRotatedImage();
 
     const { width: tw, height: th } = getTargetDimensions(options.device);
     const canvases: HTMLCanvasElement[] = [];
@@ -110,7 +157,7 @@ export function PreviewPanel({
     }
     setPreviewCanvases(canvases);
     setOriginalCanvases(originals);
-  }, [orientation, options.device, options.dithering, options.is2bit]);
+  }, [options.device, options.dithering, options.is2bit, rotation]);
 
   useEffect(() => {
     if (hasNaturalSize && slices.length > 0) {
@@ -120,49 +167,54 @@ export function PreviewPanel({
 
   const drawOverlay = useCallback(() => {
     if (!canvasRef.current || !hasNaturalSize) return;
+    const img = imgRef.current;
+    if (!img) return;
     const canvas = canvasRef.current;
     const container = canvas.parentElement!;
     const maxW = container.clientWidth - 40;
     const maxH = container.clientHeight - 60;
-    const imgW = naturalSize.width;
-    const imgH = naturalSize.height;
-    const scale = Math.min(maxW / imgW, maxH / imgH, 1);
-    const dispW = Math.round(imgW * scale);
-    const dispH = Math.round(imgH * scale);
+
+    const sourceCanvas = getRotatedImage();
+    const srcW = sourceCanvas.width;
+    const srcH = sourceCanvas.height;
+
+    const scale = Math.min(maxW / srcW, maxH / srcH, 1);
+    const dispW = Math.round(srcW * scale);
+    const dispH = Math.round(srcH * scale);
 
     canvas.width = dispW;
     canvas.height = dispH;
     const cctx = canvas.getContext('2d')!;
-    cctx.drawImage(imgRef.current!, 0, 0, dispW, dispH);
+    cctx.drawImage(sourceCanvas, 0, 0, dispW, dispH);
 
-    if (selectedSlice < 0) return;
+    if (selectedSlice >= 0 && slices.length > 0 && !skipSlicing) {
+      for (let i = 0; i < slices.length; i++) {
+        const s = slices[i];
+        const sx = s.x * scale;
+        const sy = s.y * scale;
+        const sw = s.width * scale;
+        const sh = s.height * scale;
 
-    for (let i = 0; i < slices.length; i++) {
-      const s = slices[i];
-      const sx = s.x * scale;
-      const sy = s.y * scale;
-      const sw = s.width * scale;
-      const sh = s.height * scale;
+        if (i === selectedSlice) {
+          cctx.fillStyle = 'rgba(212, 67, 42, 0.15)';
+          cctx.fillRect(sx, sy, sw, sh);
+          cctx.strokeStyle = '#d4432a';
+          cctx.lineWidth = 3;
+          cctx.strokeRect(sx, sy, sw, sh);
+        } else {
+          cctx.strokeStyle = '#d4432a';
+          cctx.lineWidth = 2;
+          cctx.setLineDash([6, 3]);
+          cctx.strokeRect(sx, sy, sw, sh);
+          cctx.setLineDash([]);
+        }
 
-      if (i === selectedSlice) {
-        cctx.fillStyle = 'rgba(233, 69, 96, 0.15)';
-        cctx.fillRect(sx, sy, sw, sh);
-        cctx.strokeStyle = '#e94560';
-        cctx.lineWidth = 3;
-        cctx.strokeRect(sx, sy, sw, sh);
-      } else {
-        cctx.strokeStyle = '#e94560';
-        cctx.lineWidth = 2;
-        cctx.setLineDash([6, 3]);
-        cctx.strokeRect(sx, sy, sw, sh);
-        cctx.setLineDash([]);
+        cctx.fillStyle = '#d4432a';
+        cctx.font = 'bold 14px sans-serif';
+        cctx.fillText(`${i + 1}`, sx + 6, sy + 18);
       }
-
-      cctx.fillStyle = '#e94560';
-      cctx.font = 'bold 14px sans-serif';
-      cctx.fillText(`${i + 1}`, sx + 6, sy + 18);
     }
-  }, [naturalSize, slices, selectedSlice, hasNaturalSize]);
+  }, [naturalSize, slices, selectedSlice, rotation, skipSlicing, hasNaturalSize]);
 
   useEffect(() => {
     drawOverlay();
@@ -192,45 +244,75 @@ export function PreviewPanel({
         <h3 className="preview-title">{imageName}</h3>
         <div className="preview-orientation">
           <button
-            className={`btn btn-sm ${orientation === 'portrait' ? 'active' : ''}`}
-            onClick={() => onOrientationChange('portrait')}
-            title="Treat as portrait page (horizontal slices)"
+            className={`btn btn-sm ${spoilerBlur ? 'active' : ''}`}
+            onClick={() => onSpoilerBlurChange(!spoilerBlur)}
+            title={spoilerBlur ? 'Disable anti-spoiler blur' : 'Enable anti-spoiler blur'}
           >
-            ↕ Portrait
-          </button>
-          <button
-            className={`btn btn-sm ${orientation === 'landscape' ? 'active' : ''}`}
-            onClick={() => onOrientationChange('landscape')}
-            title="Treat as landscape spread (vertical slices)"
-          >
-            ↔ Landscape
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+              {spoilerBlur ? (
+                <><path d="M1 7s2-4 6-4 6 4 6 4-2 4-6 4-6-4-6-4z" stroke="currentColor" strokeWidth="1.2" fill="none"/><circle cx="7" cy="7" r="2" stroke="currentColor" strokeWidth="1.2" fill="none"/><line x1="1.5" y1="1.5" x2="12.5" y2="12.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></>
+              ) : (
+                <><path d="M1 7s2-4 6-4 6 4 6 4-2 4-6 4-6-4-6-4z" stroke="currentColor" strokeWidth="1.2" fill="none"/><circle cx="7" cy="7" r="2" stroke="currentColor" strokeWidth="1.2" fill="none"/></>
+              )}
+            </svg>
+            Spoiler
           </button>
         </div>
       </div>
 
       <img ref={imgRef} src={imageUrl} alt="" style={{ display: 'none' }} />
 
-      <div className="preview-canvas-container" ref={containerRef}>
-        {hasNaturalSize && (
-          <>
-            <canvas ref={canvasRef} className="preview-canvas" />
-            {slices.length > 1 && (
-              <div className="preview-slice-info">
-                {naturalSize.width}×{naturalSize.height} → {slices.length} slices × {slices[0]?.width}×{slices[0]?.height}
-              </div>
+      <div className={`preview-canvas-wrapper${spoilerBlur ? ' spoiler-blur' : ''}`}>
+        <button
+          className="canvas-btn-side canvas-btn-left"
+          onClick={() => onSkipSlicingChange(!skipSlicing)}
+          title={skipSlicing ? 'Enable slicing' : 'Skip slicing (full page only)'}
+        >
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            {skipSlicing ? (
+              <path d="M5 4l3 3M5 4l-3 3M5 4v12M15 16l-3-3M15 16l3-3M15 16V4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            ) : (
+              <path d="M4 3l4 4M4 3L2 5M4 3v12M16 17l-4-4M16 17l2-2M16 17V5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
             )}
-          </>
-        )}
-        {!hasNaturalSize && (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-            <div className="preview-skeleton" />
-            <div className="preview-loading">Loading image\u2026</div>
-          </div>
-        )}
+          </svg>
+        </button>
+
+        <div className="preview-canvas-container" ref={containerRef}>
+          {hasNaturalSize && (
+            <>
+              <canvas ref={canvasRef} className="preview-canvas" />
+              {slices.length > 1 && (
+                <div className="preview-slice-info">
+                  {naturalSize.width}×{naturalSize.height} → {slices.length} slices × {slices[0]?.width}×{slices[0]?.height}
+                </div>
+              )}
+            </>
+          )}
+          {!hasNaturalSize && (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+              <div className="preview-skeleton" />
+              <div className="preview-loading">Loading image\u2026</div>
+            </div>
+          )}
+        </div>
+
+        <button
+          className="canvas-btn-side canvas-btn-right"
+          onClick={() => {
+            const next = rotation === 0 ? 90 : rotation === 90 ? 180 : rotation === 180 ? 270 : 0;
+            onRotationChange(next);
+          }}
+          title={`Rotated ${rotation}° — click to rotate 90° CW`}
+        >
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="M4 10a6 6 0 0110.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            <path d="M15 3v3.5H11.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
       </div>
 
       {previewCanvases.length > 0 && (
-        <div className="slice-strip">
+        <div className={`slice-strip${skipSlicing ? ' slicing-disabled' : ''}`}>
           {previewCanvases.map((canvas, i) => {
             const sliceIndex = i - 1;
             const sl = sliceIndex >= 0 ? slices[sliceIndex] : null;

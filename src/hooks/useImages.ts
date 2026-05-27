@@ -17,6 +17,8 @@ interface UseImagesReturn {
   goToNext: () => void;
   goToPrev: () => void;
   setOrientation: (index: number, orientation: OrientationMode) => void;
+  setSkipSlicing: (index: number, skip: boolean) => void;
+  setRotation: (index: number, rotation: 0 | 90 | 180 | 270) => void;
   clear: () => void;
 }
 
@@ -61,6 +63,8 @@ export function useImages(): UseImagesReturn {
         url: URL.createObjectURL(f),
         processed: false,
         orientation: 'portrait' as OrientationMode,
+        skipSlicing: false,
+        rotation: 0 as const,
       }))
     );
 
@@ -78,6 +82,8 @@ export function useImages(): UseImagesReturn {
         url: URL.createObjectURL(e.blob),
         processed: false,
         orientation: 'portrait' as OrientationMode,
+        skipSlicing: false,
+        rotation: 0 as const,
         source,
       }))
     );
@@ -106,6 +112,22 @@ export function useImages(): UseImagesReturn {
     });
   }, []);
 
+  const setSkipSlicing = useCallback((index: number, skip: boolean) => {
+    setImages((prev) => {
+      const next = [...prev];
+      if (next[index]) next[index] = { ...next[index], skipSlicing: skip };
+      return next;
+    });
+  }, []);
+
+  const setRotation = useCallback((index: number, rotation: 0 | 90 | 180 | 270) => {
+    setImages((prev) => {
+      const next = [...prev];
+      if (next[index]) next[index] = { ...next[index], rotation };
+      return next;
+    });
+  }, []);
+
   const clear = useCallback(() => {
     oldUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
     oldUrlsRef.current = [];
@@ -117,6 +139,6 @@ export function useImages(): UseImagesReturn {
   return {
     images, currentIndex, currentImage, loading, error,
     loadFromFiles, loadCbzFiles,
-    selectImage, goToNext, goToPrev, setOrientation, clear,
+    selectImage, goToNext, goToPrev, setOrientation, setSkipSlicing, setRotation, clear,
   };
 }

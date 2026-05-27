@@ -785,6 +785,43 @@ body::before {
   flex-shrink: 0;
 }
 
+.preview-canvas-wrapper {
+  flex: 1;
+  display: flex;
+  gap: 6px;
+  min-height: 200px;
+  animation: fadeSlideUp 0.35s ease both;
+}
+
+.preview-canvas-wrapper.spoiler-blur canvas {
+  filter: blur(8px);
+  transition: filter 0.3s ease;
+}
+
+.canvas-btn-side {
+  width: 40px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg2);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.canvas-btn-side:hover {
+  background: var(--hover-bg);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.canvas-btn-side:active {
+  background: var(--accent-alpha);
+}
+
 .preview-canvas-container {
   flex: 1;
   display: flex;
@@ -797,7 +834,6 @@ body::before {
   min-height: 200px;
   overflow: hidden;
   box-shadow: var(--shadow-md);
-  animation: fadeSlideUp 0.35s ease both;
 }
 
 .preview-canvas {
@@ -853,6 +889,12 @@ body::before {
   overflow-x: auto;
   flex-shrink: 0;
   scrollbar-width: thin;
+}
+
+.slice-strip.slicing-disabled .slice-thumb:not(:first-child) {
+  opacity: 0.2;
+  pointer-events: none;
+  cursor: default;
 }
 
 .slice-thumb {

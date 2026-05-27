@@ -5,6 +5,23 @@ import { applyDither } from './processing/dithering';
 import { getTargetDimensions } from './processing/canvas';
 import { buildXtc } from './xtc-format';
 
+function rotateCanvas(src: HTMLCanvasElement, rotation: 0 | 90 | 180 | 270): HTMLCanvasElement {
+  if (rotation === 0) return src;
+  const sw = src.width;
+  const sh = src.height;
+  const sideways = rotation === 90 || rotation === 270;
+  const out = document.createElement('canvas');
+  out.width = sideways ? sh : sw;
+  out.height = sideways ? sw : sh;
+  const ctx = out.getContext('2d')!;
+  ctx.save();
+  ctx.translate(out.width / 2, out.height / 2);
+  ctx.rotate(rotation * Math.PI / 180);
+  ctx.drawImage(src, -sw / 2, -sh / 2);
+  ctx.restore();
+  return out;
+}
+
 interface PageEntry {
   data: ArrayBuffer;
   width: number;
@@ -94,7 +111,7 @@ async function processFullPage(
 }
 
 export async function convertImages(
-  images: Array<{ canvas: HTMLCanvasElement; name: string; orientation: OrientationMode }>,
+  images: Array<{ canvas: HTMLCanvasElement; name: string; orientation: OrientationMode; skipSlicing: boolean; rotation: 0 | 90 | 180 | 270 }>,
   options: ConversionOptions,
   onProgress: (p: ConversionProgress) => void,
   signal?: AbortSignal,
@@ -104,14 +121,14 @@ export async function convertImages(
   const { width: targetW, height: targetH } = getTargetDimensions(options.device);
 
   let totalPages = 0;
-  const pagesPerImage: number[] = [];
 
   for (const img of images) {
     if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
 
-    const { slices } = computeSlices(img.canvas.width, img.canvas.height, img.orientation);
-    const count = 1 + slices.length; // 1 full page + N slices
-    pagesPerImage.push(count);
+    const rotatedCanvas = rotateCanvas(img.canvas, img.rotation);
+    const { slices } = computeSlices(rotatedCanvas.width, rotatedCanvas.height, img.orientation);
+    const sliceCount = img.skipSlicing ? 0 : slices.length;
+    const count = 1 + sliceCount; // 1 full page + N slices (or 0)
     totalPages += count;
   }
 
@@ -121,9 +138,10 @@ export async function convertImages(
     if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
 
     const img = images[i];
-    const { slices } = computeSlices(img.canvas.width, img.canvas.height, img.orientation);
+    const sourceCanvas = rotateCanvas(img.canvas, img.rotation);
+    const { slices } = computeSlices(sourceCanvas.width, sourceCanvas.height, img.orientation);
 
-    // 1. Página completa primero
+    // 1. Full page
     if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
 
     onProgress({
@@ -132,7 +150,7 @@ export async function convertImages(
       message: `${img.name}: full page`,
     });
 
-    const fullData = await processFullPage(img.canvas, options, targetW, targetH);
+    const fullData = await processFullPage(sourceCanvas, options, targetW, targetH);
     pages.push({
       data: fullData,
       width: targetW,
@@ -140,23 +158,25 @@ export async function convertImages(
     });
     processed++;
 
-    // 2. Los 5 slices
-    for (const slice of slices) {
-      if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+    // 2. Slices (only if skipSlicing is false)
+    if (!img.skipSlicing) {
+      for (const slice of slices) {
+        if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
 
-      onProgress({
-        current: processed,
-        total: totalPages,
-        message: `${img.name}: slice ${slice.index + 1}/${slices.length}`,
-      });
+        onProgress({
+          current: processed,
+          total: totalPages,
+          message: `${img.name}: slice ${slice.index + 1}/${slices.length}`,
+        });
 
-      const data = await processSlice(img.canvas, slice, options, targetW, targetH);
-      pages.push({
-        data,
-        width: targetW,
-        height: targetH,
-      });
-      processed++;
+        const data = await processSlice(sourceCanvas, slice, options, targetW, targetH);
+        pages.push({
+          data,
+          width: targetW,
+          height: targetH,
+        });
+        processed++;
+      }
     }
   }
 
