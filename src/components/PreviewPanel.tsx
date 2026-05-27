@@ -42,6 +42,9 @@ export function PreviewPanel({
   const [previewCanvases, setPreviewCanvases] = useState<HTMLCanvasElement[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [pulsing, setPulsing] = useState(false);
+  const [hoveredThumb, setHoveredThumb] = useState(-2);
+  const [originalCanvases, setOriginalCanvases] = useState<HTMLCanvasElement[]>([]);
+  const [showOriginal, setShowOriginal] = useState(false);
 
   const hasNaturalSize = naturalSize.width > 0 && naturalSize.height > 0;
 
@@ -79,8 +82,14 @@ export function PreviewPanel({
 
     const { width: tw, height: th } = getTargetDimensions(options.device);
     const canvases: HTMLCanvasElement[] = [];
+    const originals: HTMLCanvasElement[] = [];
 
     const fullOut = extractFullPage(sourceCanvas, tw, th);
+    const fullOrig = document.createElement('canvas');
+    fullOrig.width = fullOut.width;
+    fullOrig.height = fullOut.height;
+    fullOrig.getContext('2d')!.drawImage(fullOut, 0, 0);
+    originals.push(fullOrig);
     let fullCtx = fullOut.getContext('2d')!;
     let fullData = fullCtx.getImageData(0, 0, tw, th);
     fullData = applyDither(fullData, options.dithering, options.is2bit);
@@ -89,6 +98,11 @@ export function PreviewPanel({
 
     for (const sl of slicesToProcess) {
       const out = extractAndRotateSlice(sourceCanvas, sl, tw, th);
+      const orig = document.createElement('canvas');
+      orig.width = out.width;
+      orig.height = out.height;
+      orig.getContext('2d')!.drawImage(out, 0, 0);
+      originals.push(orig);
       const outCtx = out.getContext('2d')!;
       let imageData = outCtx.getImageData(0, 0, tw, th);
       imageData = applyDither(imageData, options.dithering, options.is2bit);
@@ -96,6 +110,7 @@ export function PreviewPanel({
       canvases.push(out);
     }
     setPreviewCanvases(canvases);
+    setOriginalCanvases(originals);
   }, [orientation, options.device, options.dithering, options.is2bit]);
 
   useEffect(() => {
@@ -155,13 +170,22 @@ export function PreviewPanel({
   }, [drawOverlay]);
 
   useEffect(() => {
-    if (!showModal) return;
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setShowModal(false);
+      if (e.key === ' ' && selectedSlice >= 0) {
+        e.preventDefault();
+        setShowModal(v => !v);
+      }
+      if (e.key === 'ArrowLeft' && selectedSlice > 0) {
+        setSelectedSlice(selectedSlice - 1);
+      }
+      if (e.key === 'ArrowRight' && selectedSlice < slices.length - 1) {
+        setSelectedSlice(selectedSlice + 1);
+      }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [showModal]);
+  }, [showModal, selectedSlice, slices.length]);
 
   useEffect(() => {
     if (selectedSlice < 0) return;
@@ -206,7 +230,10 @@ export function PreviewPanel({
           </>
         )}
         {!hasNaturalSize && (
-          <div className="preview-loading">Loading image...</div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+            <div className="preview-skeleton" />
+            <div className="preview-loading">Loading image...</div>
+          </div>
         )}
       </div>
 
@@ -214,6 +241,7 @@ export function PreviewPanel({
         <div className="slice-strip">
           {previewCanvases.map((canvas, i) => {
             const sliceIndex = i - 1;
+            const sl = sliceIndex >= 0 ? slices[sliceIndex] : null;
             return (
               <div
                 key={i}
@@ -222,9 +250,25 @@ export function PreviewPanel({
                   setSelectedSlice(sliceIndex);
                   setShowModal(true);
                 }}
+                onMouseEnter={() => setHoveredThumb(sliceIndex)}
+                onMouseLeave={() => setHoveredThumb(-2)}
               >
                 <SliceCanvas canvas={canvas} />
                 <span className="slice-label">{i === 0 ? 'Full' : `${i}`}</span>
+                {hoveredThumb === sliceIndex && sl && (
+                  <div className="slice-tooltip">
+                    <div>Slice {sliceIndex + 1}</div>
+                    <div>{sl.width}×{sl.height}px</div>
+                    <div>Offset: {sl.x},{sl.y}</div>
+                  </div>
+                )}
+                {hoveredThumb === sliceIndex && i === 0 && (
+                  <div className="slice-tooltip">
+                    <div>Full page preview</div>
+                    <div>{naturalSize.width}×{naturalSize.height}px</div>
+                    <div>Dithered at target resolution</div>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -236,14 +280,48 @@ export function PreviewPanel({
           <div className="slice-modal" onClick={e => e.stopPropagation()}>
             <div className="slice-modal-header">
               <span className="slice-modal-title">
-                {imageName} — {selectedSlice < 0 ? 'Full page' : `Slice ${selectedSlice + 1}`}
+                {imageName} — {selectedSlice < 0 ? 'Full page' : `Slice ${selectedSlice + 1} / ${slices.length}`}
               </span>
-              <button className="btn btn-sm" onClick={() => setShowModal(false)}>✕</button>
+              <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                {originalCanvases.length > 0 && (
+                  <button
+                    className={`btn btn-xs ${!showOriginal ? 'active' : ''}`}
+                    onClick={() => setShowOriginal(v => !v)}
+                    title={showOriginal ? 'Show dithered result' : 'Show original grayscale'}
+                  >
+                    {showOriginal ? 'Dithered' : 'Original'}
+                  </button>
+                )}
+                <button className="btn btn-sm" onClick={() => setShowModal(false)}>✕</button>
+              </div>
             </div>
             <div className="slice-modal-body">
-              {previewCanvases[selectedSlice < 0 ? 0 : selectedSlice + 1] && (
-                <SliceCanvas canvas={previewCanvases[selectedSlice < 0 ? 0 : selectedSlice + 1]} />
-              )}
+              {(() => {
+                const idx = selectedSlice < 0 ? 0 : selectedSlice + 1;
+                const canvas = showOriginal && originalCanvases[idx] ? originalCanvases[idx] : previewCanvases[idx];
+                return canvas ? <SliceCanvas canvas={canvas} /> : null;
+              })()}
+            </div>
+            <div className="slice-modal-footer">
+              <button
+                className="btn btn-sm"
+                disabled={selectedSlice <= 0}
+                onClick={() => setSelectedSlice(selectedSlice - 1)}
+                title="Previous slice"
+              >
+                ◀
+              </button>
+              <span className="slice-modal-counter">
+                {selectedSlice < 0 ? 'Full page' : `Slice ${selectedSlice + 1} of ${slices.length}`}
+              </span>
+              <button
+                className="btn btn-sm"
+                disabled={selectedSlice < 0 || selectedSlice >= slices.length - 1}
+                onClick={() => setSelectedSlice(selectedSlice + 1)}
+                title="Next slice"
+              >
+                ▶
+              </button>
             </div>
           </div>
         </div>

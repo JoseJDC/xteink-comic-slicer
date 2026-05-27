@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import type { ConversionOptions, OrientationMode, DitherAlgorithm } from './types';
 import { useImages } from './hooks/useImages';
 import { ConfigPanel } from './components/ConfigPanel';
@@ -39,6 +39,61 @@ export default function App() {
   }, [images]);
 
   const disabled = false;
+  const [isDragging, setIsDragging] = useState(false);
+  const dragCount = useRef(0);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCount.current++;
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCount.current--;
+    if (dragCount.current <= 0) {
+      dragCount.current = 0;
+      setIsDragging(false);
+    }
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    dragCount.current = 0;
+    const files = e.dataTransfer.files;
+    if (!files || files.length === 0) return;
+    const cbzFiles = Array.from(files).filter((f) => f.name.toLowerCase().endsWith('.cbz'));
+    if (cbzFiles.length > 0) {
+      handleCbzSelected(cbzFiles);
+    } else {
+      handleFilesSelected(files);
+    }
+  }, [handleFilesSelected, handleCbzSelected]);
+
+  useEffect(() => {
+    if (images.images.length === 0) return;
+    const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (e.key === 'ArrowLeft' && images.currentIndex > 0) {
+        images.selectImage(images.currentIndex - 1);
+      }
+      if (e.key === 'ArrowRight' && images.currentIndex < images.images.length - 1) {
+        images.selectImage(images.currentIndex + 1);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [images]);
 
   return (
     <div className="app">
@@ -84,7 +139,23 @@ export default function App() {
           )}
         </aside>
 
-        <section className="app-content">
+        <section
+          className="app-content"
+          onDragOver={handleDragOver}
+          onDragEnter={handleDragEnter}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          {isDragging && (
+            <div className="drop-overlay">
+              <div className="drop-overlay-content">
+                <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M24 6v36M6 24h36" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+                <span>Drop files here</span>
+              </div>
+            </div>
+          )}
           {images.currentImage ? (
             <PreviewPanel
               key={images.currentIndex}
