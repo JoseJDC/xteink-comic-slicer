@@ -174,7 +174,7 @@ export async function convertImages(
     : 'comic');
 
   const ext = options.is2bit ? 'xtch' : 'xtc';
-  const filename = `${baseTitle.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64)}.${ext}`;
+  const filename = `${baseTitle}.${ext}`;
 
   onProgress({
     current: totalPages,

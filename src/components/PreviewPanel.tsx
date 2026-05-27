@@ -41,7 +41,6 @@ export function PreviewPanel({
   const [selectedSlice, setSelectedSlice] = useState(-1);
   const [previewCanvases, setPreviewCanvases] = useState<HTMLCanvasElement[]>([]);
   const [showModal, setShowModal] = useState(false);
-  const [pulsing, setPulsing] = useState(false);
   const [hoveredThumb, setHoveredThumb] = useState(-2);
   const [originalCanvases, setOriginalCanvases] = useState<HTMLCanvasElement[]>([]);
   const [showOriginal, setShowOriginal] = useState(false);
@@ -187,13 +186,6 @@ export function PreviewPanel({
     return () => window.removeEventListener('keydown', handler);
   }, [showModal, selectedSlice, slices.length]);
 
-  useEffect(() => {
-    if (selectedSlice < 0) return;
-    setPulsing(true);
-    const timer = setTimeout(() => setPulsing(false), 400);
-    return () => clearTimeout(timer);
-  }, [selectedSlice]);
-
   return (
     <div className="preview-panel">
       <div className="preview-header">
@@ -218,7 +210,7 @@ export function PreviewPanel({
 
       <img ref={imgRef} src={imageUrl} alt="" style={{ display: 'none' }} />
 
-      <div className={`preview-canvas-container${pulsing ? ' pulse' : ''}`} ref={containerRef}>
+      <div className="preview-canvas-container" ref={containerRef}>
         {hasNaturalSize && (
           <>
             <canvas ref={canvasRef} className="preview-canvas" />
@@ -246,16 +238,33 @@ export function PreviewPanel({
               <button
                 key={i}
                 className={`slice-thumb ${sliceIndex === selectedSlice ? 'selected' : ''}`}
-                onClick={() => {
-                  setSelectedSlice(sliceIndex);
-                  setShowModal(true);
-                }}
+                onClick={() => setSelectedSlice(sliceIndex)}
                 onMouseEnter={() => setHoveredThumb(sliceIndex)}
                 onMouseLeave={() => setHoveredThumb(-2)}
                 aria-label={i === 0 ? 'Full page preview' : `Slice ${i} preview`}
               >
                 <SliceCanvas canvas={canvas} />
                 <span className="slice-label">{i === 0 ? 'Full' : `${i}`}</span>
+                {hoveredThumb === sliceIndex && (
+                  <span
+                    className="slice-view-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedSlice(sliceIndex);
+                      setShowModal(true);
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); setSelectedSlice(sliceIndex); setShowModal(true); } }}
+                  >
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+                      <circle cx="5" cy="5" r="4.5" stroke="currentColor" strokeWidth="1.2"/>
+                      <line x1="5" y1="3.5" x2="5" y2="6.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+                      <line x1="3.5" y1="5" x2="6.5" y2="5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+                    </svg>
+                    View
+                  </span>
+                )}
                 {hoveredThumb === sliceIndex && sl && (
                   <div className="slice-tooltip">
                     <div>Slice {sliceIndex + 1}</div>
