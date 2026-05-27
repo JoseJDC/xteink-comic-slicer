@@ -232,7 +232,7 @@ export function PreviewPanel({
         {!hasNaturalSize && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
             <div className="preview-skeleton" />
-            <div className="preview-loading">Loading image...</div>
+            <div className="preview-loading">Loading image\u2026</div>
           </div>
         )}
       </div>
@@ -243,7 +243,7 @@ export function PreviewPanel({
             const sliceIndex = i - 1;
             const sl = sliceIndex >= 0 ? slices[sliceIndex] : null;
             return (
-              <div
+              <button
                 key={i}
                 className={`slice-thumb ${sliceIndex === selectedSlice ? 'selected' : ''}`}
                 onClick={() => {
@@ -252,6 +252,7 @@ export function PreviewPanel({
                 }}
                 onMouseEnter={() => setHoveredThumb(sliceIndex)}
                 onMouseLeave={() => setHoveredThumb(-2)}
+                aria-label={i === 0 ? 'Full page preview' : `Slice ${i} preview`}
               >
                 <SliceCanvas canvas={canvas} />
                 <span className="slice-label">{i === 0 ? 'Full' : `${i}`}</span>
@@ -269,7 +270,7 @@ export function PreviewPanel({
                     <div>Dithered at target resolution</div>
                   </div>
                 )}
-              </div>
+              </button>
             );
           })}
         </div>
@@ -292,7 +293,7 @@ export function PreviewPanel({
                     {showOriginal ? 'Dithered' : 'Original'}
                   </button>
                 )}
-                <button className="btn btn-sm" onClick={() => setShowModal(false)}>✕</button>
+                <button className="btn btn-sm" onClick={() => setShowModal(false)} aria-label="Close preview">✕</button>
               </div>
             </div>
             <div className="slice-modal-body">
@@ -307,7 +308,7 @@ export function PreviewPanel({
                 className="btn btn-sm"
                 disabled={selectedSlice <= 0}
                 onClick={() => setSelectedSlice(selectedSlice - 1)}
-                title="Previous slice"
+                aria-label="Previous slice"
               >
                 ◀
               </button>
@@ -318,7 +319,7 @@ export function PreviewPanel({
                 className="btn btn-sm"
                 disabled={selectedSlice < 0 || selectedSlice >= slices.length - 1}
                 onClick={() => setSelectedSlice(selectedSlice + 1)}
-                title="Next slice"
+                aria-label="Next slice"
               >
                 ▶
               </button>

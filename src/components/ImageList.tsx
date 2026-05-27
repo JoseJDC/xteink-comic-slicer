@@ -60,13 +60,14 @@ const Row = memo(function Row({ index, style, data }: ListChildComponentProps<Ro
   const { images, currentIndex, onSelect } = data;
   const img = images[index];
   return (
-    <div
+    <button
       style={style}
       className={`image-list-item ${index === currentIndex ? 'selected' : ''} ${img.processed ? 'processed' : ''}`}
       onClick={() => onSelect(index)}
+      aria-label={`Select ${img.name}`}
     >
       <div className="image-list-thumb">
-        <img src={img.url} alt={img.name} loading="lazy" />
+        <img src={img.url} alt={img.name} loading="lazy" width="32" height="32" />
       </div>
       <div className="image-list-info">
         <span className="image-list-name" title={img.name}>{img.name}</span>
@@ -74,6 +75,6 @@ const Row = memo(function Row({ index, style, data }: ListChildComponentProps<Ro
           {img.orientation === 'portrait' ? '↕ Portrait' : '↔ Landscape'}
         </span>
       </div>
-    </div>
+    </button>
   );
 });

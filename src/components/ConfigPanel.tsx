@@ -98,7 +98,13 @@ export const ConfigPanel = memo(function ConfigPanel({
             disabled={disabled}
             className="config-file-input"
           />
-          <span className="config-file-btn">Choose files</span>
+          <span className="config-file-btn">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+              <path d="M7 10V3M4 6l3-3 3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M2 9v2a1 1 0 001 1h8a1 1 0 001-1V9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+            Choose files
+          </span>
         </div>
       </div>
 
@@ -170,7 +176,7 @@ export const ConfigPanel = memo(function ConfigPanel({
         <label>Presets:</label>
         <div className="config-presets">
           {presets.length === 0 && !showPresetInput && (
-            <button className="config-preset-add" onClick={() => setShowPresetInput(true)} title="Save current settings as a preset">
+            <button className="config-preset-add" onClick={() => setShowPresetInput(true)} aria-label="Add new preset">
               + Save preset
             </button>
           )}
@@ -179,11 +185,11 @@ export const ConfigPanel = memo(function ConfigPanel({
               <button className="config-preset-btn" onClick={() => handleLoadPreset(p)} title={`Load: ${p.name}`}>
                 {p.name}
               </button>
-              <button className="config-preset-del" onClick={() => handleDeletePreset(p.name)} title="Delete preset">✕</button>
+              <button className="config-preset-del" onClick={() => handleDeletePreset(p.name)} aria-label={`Delete preset "${p.name}"`}>✕</button>
             </div>
           ))}
           {presets.length > 0 && !showPresetInput && (
-            <button className="config-preset-add" onClick={() => setShowPresetInput(true)}>+</button>
+            <button className="config-preset-add" onClick={() => setShowPresetInput(true)} aria-label="Add new preset">+</button>
           )}
           {showPresetInput && (
             <div className="config-preset-input-row">
@@ -193,7 +199,7 @@ export const ConfigPanel = memo(function ConfigPanel({
                 value={presetName}
                 onChange={e => setPresetName(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') handleSavePreset(); if (e.key === 'Escape') setShowPresetInput(false); }}
-                placeholder="Preset name..."
+                placeholder="Preset name\u2026"
                 autoFocus
               />
               <button className="btn btn-xs" onClick={handleSavePreset} disabled={!presetName.trim()}>Save</button>

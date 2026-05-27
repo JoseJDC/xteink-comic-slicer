@@ -54,7 +54,7 @@ export const BatchPanel = memo(function BatchPanel({ images, options, mergeMode 
     setConverting(true);
     abortRef.current = new AbortController();
 
-    setProgress({ current: 0, total: groups.length, message: `Converting ${groups.length} file(s)...` });
+    setProgress({ current: 0, total: groups.length, message: `Converting ${groups.length} file(s)\u2026` });
 
     try {
       for (let g = 0; g < groups.length; g++) {
@@ -64,7 +64,7 @@ export const BatchPanel = memo(function BatchPanel({ images, options, mergeMode 
         setProgress({
           current: g,
           total: groups.length,
-          message: `Loading images for "${group.title}"...`,
+          message: `Loading images for "${group.title}"\u2026`,
         });
 
         const loaded = await Promise.all(
@@ -140,7 +140,7 @@ export const BatchPanel = memo(function BatchPanel({ images, options, mergeMode 
   return (
     <div className="batch-panel">
       {progress && progress.message && (
-        <div className="batch-progress">
+        <div className="batch-progress" aria-live="polite">
           <div className="progress-text">
             {progress.total > 0 ? (
               <>{progress.current}/{progress.total}: {progress.message}</>
@@ -170,6 +170,10 @@ export const BatchPanel = memo(function BatchPanel({ images, options, mergeMode 
             onClick={handleConvertClick}
             disabled={images.length === 0}
           >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+              <path d="M7 11V4M4 7l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M2 10v1.5A1.5 1.5 0 003.5 13h7a1.5 1.5 0 001.5-1.5V10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
             Convert to XTC ({srcCount > 1 ? `${srcCount} files` : `${images.length} images`})
           </button>
         )}
